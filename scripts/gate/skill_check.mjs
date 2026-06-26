@@ -6,13 +6,13 @@ import { appendLog, systemRoot, validateTaskId } from "../lib/common.mjs";
 const [taskId] = process.argv.slice(2);
 
 const requiredFiles = [
-  "SKILLS/loop-engineering.md",
-  "SKILLS/agent-roles.md",
-  "SKILLS/code-standard.md",
-  "SKILLS/review-standard.md",
-  "SKILLS/triage-rules.md",
-  "SKILLS/forbidden-list.md",
-  "SKILLS/design-standard.md"
+  "skills/loop-engineering/SKILL.md",
+  "skills/triage-agent/SKILL.md",
+  "skills/development-agent/SKILL.md",
+  "skills/prototyper-agent/SKILL.md",
+  "skills/tester-agent/SKILL.md",
+  "skills/review-agent/SKILL.md",
+  "skills/scoring-agent/SKILL.md"
 ];
 
 try {

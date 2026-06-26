@@ -20,27 +20,27 @@ const [role, taskId] = process.argv.slice(2);
 const roleConfig = {
   triage: {
     prompt: "prompts/agents/triage-agent.md",
-    skills: ["SKILLS/loop-engineering.md", "SKILLS/agent-roles.md", "SKILLS/triage-rules.md"]
+    skills: ["skills/loop-engineering/SKILL.md", "skills/triage-agent/SKILL.md"]
   },
   development: {
     prompt: "prompts/agents/development-agent.md",
-    skills: ["SKILLS/loop-engineering.md", "SKILLS/agent-roles.md", "SKILLS/code-standard.md", "SKILLS/forbidden-list.md"]
+    skills: ["skills/loop-engineering/SKILL.md", "skills/development-agent/SKILL.md"]
   },
   prototyper: {
     prompt: "prompts/agents/prototyper.md",
-    skills: ["SKILLS/loop-engineering.md", "SKILLS/agent-roles.md", "SKILLS/design-standard.md", "SKILLS/forbidden-list.md"]
+    skills: ["skills/loop-engineering/SKILL.md", "skills/prototyper-agent/SKILL.md"]
   },
   tester: {
     prompt: "prompts/agents/tester.md",
-    skills: ["SKILLS/loop-engineering.md", "SKILLS/agent-roles.md", "SKILLS/design-standard.md"]
+    skills: ["skills/loop-engineering/SKILL.md", "skills/tester-agent/SKILL.md"]
   },
   review: {
     prompt: "prompts/agents/review-agent.md",
-    skills: ["SKILLS/loop-engineering.md", "SKILLS/agent-roles.md", "SKILLS/review-standard.md", "SKILLS/forbidden-list.md"]
+    skills: ["skills/loop-engineering/SKILL.md", "skills/review-agent/SKILL.md"]
   },
   scoring: {
     prompt: "prompts/agents/scoring-agent.md",
-    skills: ["SKILLS/loop-engineering.md", "SKILLS/agent-roles.md", "SKILLS/review-standard.md", "SKILLS/triage-rules.md", "SKILLS/forbidden-list.md"]
+    skills: ["skills/loop-engineering/SKILL.md", "skills/scoring-agent/SKILL.md"]
   }
 };
 
@@ -55,7 +55,8 @@ try {
   validateTaskId(taskId);
   const state = readState(taskId);
   const config = roleConfig[role];
-  const readFiles = [config.prompt, ...config.skills];
+  const memoryFile = `memory/tasks/${taskId}.md`;
+  const readFiles = [config.prompt, ...config.skills, ...(fs.existsSync(path.join(systemRoot, memoryFile)) ? [memoryFile] : [])];
   const sizes = readFiles.map((file) => `${file}:${readRequired(file).length}`);
   const requirement = getField(state, "Requirement");
   const acceptance = getField(state, "Acceptance");

@@ -23,13 +23,14 @@ No agent may approve its own work. No agent may bypass skill files, state update
 
 Before any role acts, it must read:
 
-- `SKILLS/agent-roles.md`
+- `skills/loop-engineering/SKILL.md`
 - Its role-specific skill file:
-  - Triage: `SKILLS/triage-rules.md`
-  - Development: `SKILLS/code-standard.md` and `SKILLS/forbidden-list.md`
-  - Review: `SKILLS/review-standard.md` and `SKILLS/forbidden-list.md`
-  - Scoring: `SKILLS/review-standard.md`, `SKILLS/triage-rules.md`, and `SKILLS/forbidden-list.md`
+  - Triage: `skills/triage-agent/SKILL.md`
+  - Development: `skills/development-agent/SKILL.md` and `skills/loop-engineering/references/forbidden-list.md`
+  - Review: `skills/review-agent/SKILL.md` and `skills/loop-engineering/references/forbidden-list.md`
+  - Scoring: `skills/scoring-agent/SKILL.md`
 - The task state file at `states/state_TASK_ID.md`
+- The task memory file at `memory/tasks/TASK_ID.md`
 
 ## Prompt Files
 

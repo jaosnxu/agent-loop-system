@@ -263,7 +263,7 @@ function developExample(taskId) {
       "",
       "1. 心跳触发模块：支持间隔巡检、定点 Cron、日志记录和后台常驻运行。",
       "2. Worktree 任务隔离模块：每个任务使用独立 `../worktrees/任务ID/` 目录和 `task/任务ID` 分支。",
-      "3. Skill 规则体系模块：通过 `SKILLS/` 下的标准文件约束代码、审查、分诊、禁区和角色边界。",
+      "3. Skill 规则体系模块：通过 `skills/*/SKILL.md` 标准目录约束代码、审查、分诊、禁区和角色边界。",
       "4. MCP 工具连接器模块：提供文件系统、Shell、GitHub 三类工具配置模板和角色权限分级。",
       "5. 子 Agent 职责分离模块：分诊、开发、审查、打分四个角色按固定 DAG 流转。",
       "6. 记忆 / 状态脊柱模块：通过 `states/state_任务ID.md` 和 `task-board.md` 记录阶段、失败、证据和下一步。",
@@ -309,7 +309,7 @@ function developExample(taskId) {
   if (result.status !== 0) throw new Error(result.stderr || result.stdout);
   run(process.execPath, ["scripts/state/record_action.mjs", taskId, "development", "write task artifact", file, "file written", "run auto gate then independent review"], systemRoot, true);
   markEvidence(taskId, `development wrote ${file}`);
-  markEvidence(taskId, "development read SKILLS/code-standard.md and SKILLS/forbidden-list.md before writing");
+  markEvidence(taskId, "development read skills/development-agent/SKILL.md and skills/loop-engineering/SKILL.md before writing");
 }
 
 function generatePrototype(taskId) {

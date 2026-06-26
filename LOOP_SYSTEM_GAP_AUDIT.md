@@ -30,7 +30,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 |---|---:|---|---|
 | Heartbeat | B- | Has heartbeat rules, config, once/daemon/cron scripts, GitHub polling fixture/API path, queue dispatch | Needs stronger supervisor behavior, recovery policy, external connector matrix, no-progress detection, and heartbeat verification suite |
 | Worktree | B | Has create/assert/clean, branch naming, orphan fallback, cleanup | Needs mandatory assert before every write path, cleanup verification on all failure branches, branch/worktree residue monitor |
-| Skill | C+ | Has SKILLS files and agent prompts | Needs formal `loop-engineering` Skill, mandatory skill-read evidence per role, version/checksum logs |
+| Skill | B | Uses standard `skills/*/SKILL.md` files and agent prompts | Needs version/checksum logs and broader skill verification fixtures |
 | Sub-agents | C | Has role prompts and stage names | Needs real isolated runner per role, model invocation, role-specific context passing, independent review/test/score outputs |
 | MCP connector | C+ | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub basics, install/start/verify scripts | Needs real browser MCP/Playwright, stronger GitHub PR/CI workflows, readonly shell enforcement, expanded verify |
 | State / Memory spine | B | Has queue, state, board, logs, resume, counters, requirement/acceptance propagation | Needs stronger no-progress accounting, queue-board-state consistency checks, richer evidence schema, artifact links |
@@ -126,12 +126,12 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 ### Existing Files
 
-- `SKILLS/agent-roles.md`
-- `SKILLS/code-standard.md`
-- `SKILLS/review-standard.md`
-- `SKILLS/triage-rules.md`
-- `SKILLS/forbidden-list.md`
-- `SKILLS/design-standard.md`
+- `skills/loop-engineering/SKILL.md`
+- `skills/development-agent/SKILL.md`
+- `skills/review-agent/SKILL.md`
+- `skills/triage-agent/SKILL.md`
+- `skills/loop-engineering/references/forbidden-list.md`
+- `skills/prototyper-agent/SKILL.md`
 - `prompts/agents/*.md`
 
 ### What It Really Does Now
@@ -143,7 +143,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 ### What Is Missing
 
-- No formal `SKILLS/loop-engineering.md` that defines the 7-module canonical LOOP.
+- No formal `skills/loop-engineering/SKILL.md` that defines the 7-module canonical LOOP.
 - No script-level proof that each agent read required Skills.
 - No Skill version/checksum logging.
 - No automated missing-skill gate.
@@ -152,7 +152,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 | Priority | Fix |
 |---|---|
-| P0 | Add `SKILLS/loop-engineering.md` with 7-module rules, task format, gate rules, and failure policy |
+| P0 | Add `skills/loop-engineering/SKILL.md` with 7-module rules, task format, gate rules, and failure policy |
 | P0 | Add skill-read evidence to state for each stage |
 | P1 | Add `scripts/gate/skill_check.mjs` to block missing required Skills |
 | P1 | Log Skill checksum/version per role |
@@ -160,7 +160,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 ### Acceptance
 
 - Every role run records Skill files read.
-- Missing `SKILLS/loop-engineering.md` blocks execution.
+- Missing `skills/loop-engineering/SKILL.md` blocks execution.
 - Updating Skill changes subsequent task behavior.
 
 ## 5. Sub-agents Audit
@@ -365,7 +365,7 @@ Do not jump directly to business tasks. Repair in this order:
 
 The smallest useful repair batch is:
 
-1. `SKILLS/loop-engineering.md`
+1. `skills/loop-engineering/SKILL.md`
 2. `scripts/gate/skill_check.mjs`
 3. `scripts/agents/run_agent.mjs`
 4. `scripts/mcp/browser_test.mjs` or Playwright MCP bridge

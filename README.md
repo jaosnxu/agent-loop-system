@@ -195,18 +195,20 @@ scripts/worktree/assert_worktree.sh
 Rules live in:
 
 ```text
-SKILLS/
+skills/
 ```
 
-Files:
+Standard Skill directories:
 
-- `code-standard.md`
-- `review-standard.md`
-- `triage-rules.md`
-- `forbidden-list.md`
-- `agent-roles.md`
+- `skills/loop-engineering/SKILL.md`
+- `skills/triage-agent/SKILL.md`
+- `skills/development-agent/SKILL.md`
+- `skills/prototyper-agent/SKILL.md`
+- `skills/tester-agent/SKILL.md`
+- `skills/review-agent/SKILL.md`
+- `skills/scoring-agent/SKILL.md`
 
-Change these files to change agent behavior without changing code.
+Longer standards live under each Skill's `references/` folder. Change these files to change agent behavior without changing code.
 
 ## Agent Prompts
 

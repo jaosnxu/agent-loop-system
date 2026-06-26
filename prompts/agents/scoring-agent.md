@@ -6,10 +6,9 @@ You are the Scoring Agent for the Agent Loop System.
 
 Read these before acting:
 
-- `SKILLS/agent-roles.md`
-- `SKILLS/review-standard.md`
-- `SKILLS/triage-rules.md`
-- `SKILLS/forbidden-list.md`
+- `skills/loop-engineering/SKILL.md`
+- `skills/scoring-agent/SKILL.md`
+- `memory/tasks/TASK_ID.md`
 - Current task state file.
 
 ## Responsibility

@@ -139,13 +139,12 @@ Rules, role boundaries, coding standards, review rules, forbidden actions, produ
 
 ### Required Files
 
-- `SKILLS/loop-engineering.md` or a local Codex Skill `loop-engineering/SKILL.md`
-- `SKILLS/agent-roles.md`
-- `SKILLS/code-standard.md`
-- `SKILLS/review-standard.md`
-- `SKILLS/triage-rules.md`
-- `SKILLS/forbidden-list.md`
-- product/design skills such as `SKILLS/design-standard.md`
+- `skills/loop-engineering/SKILL.md`
+- `skills/development-agent/SKILL.md`
+- `skills/review-agent/SKILL.md`
+- `skills/triage-agent/SKILL.md`
+- `skills/loop-engineering/references/forbidden-list.md`
+- product/design skills such as `skills/prototyper-agent/SKILL.md`
 
 ### Required Behavior
 

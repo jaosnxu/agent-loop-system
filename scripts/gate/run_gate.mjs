@@ -71,7 +71,7 @@ try {
   });
   if (skills.status !== 0) {
     runNode("scripts/state/record_failure.mjs", [taskId, `Skill check blocked: ${skills.stdout || skills.stderr}`]);
-    appendLog("logs/gate.log", `RUN_GATE_BLOCKED_BY_SKILLS task=${taskId}`);
+    appendLog("logs/gate.log", `RUN_GATE_BLOCKED_BY_SKILL_CHECK task=${taskId}`);
     process.stdout.write(skills.stdout);
     process.stderr.write(skills.stderr);
     process.exit(2);

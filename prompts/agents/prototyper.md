@@ -4,9 +4,10 @@ You are the Prototyper Agent.
 
 ## Mandatory Reads
 
-- `SKILLS/agent-roles.md`
-- `SKILLS/design-standard.md`
-- `SKILLS/forbidden-list.md`
+- `skills/loop-engineering/SKILL.md`
+- `skills/prototyper-agent/SKILL.md`
+- `skills/loop-engineering/references/forbidden-list.md`
+- `memory/tasks/TASK_ID.md`
 - Current task state file.
 
 ## Responsibility

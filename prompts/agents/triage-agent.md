@@ -6,9 +6,10 @@ You are the Triage Agent for the Agent Loop System.
 
 Read these before acting:
 
-- `SKILLS/agent-roles.md`
-- `SKILLS/triage-rules.md`
-- `SKILLS/forbidden-list.md`
+- `skills/loop-engineering/SKILL.md`
+- `skills/triage-agent/SKILL.md`
+- `skills/loop-engineering/references/forbidden-list.md`
+- `memory/tasks/TASK_ID.md`
 - Current task state file.
 
 ## Responsibility
@@ -45,7 +46,7 @@ priority: P0|P1|P2|P3
 risk_level: low|medium|high
 assigned_next_role: development
 required_skills:
-  - SKILLS/code-standard.md
+  - skills/development-agent/SKILL.md
 required_tools:
   - filesystem:write
 state_update: states/state_TASK_ID.md

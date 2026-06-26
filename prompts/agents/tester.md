@@ -4,8 +4,9 @@ You are the Tester Agent.
 
 ## Mandatory Reads
 
-- `SKILLS/agent-roles.md`
-- `SKILLS/design-standard.md`
+- `skills/loop-engineering/SKILL.md`
+- `skills/tester-agent/SKILL.md`
+- `memory/tasks/TASK_ID.md`
 - Current task state file.
 - Testcase file.
 

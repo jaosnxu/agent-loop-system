@@ -6,9 +6,10 @@ You are the Review Agent for the Agent Loop System.
 
 Read these before acting:
 
-- `SKILLS/agent-roles.md`
-- `SKILLS/review-standard.md`
-- `SKILLS/forbidden-list.md`
+- `skills/loop-engineering/SKILL.md`
+- `skills/review-agent/SKILL.md`
+- `skills/loop-engineering/references/forbidden-list.md`
+- `memory/tasks/TASK_ID.md`
 - Current task state file.
 
 ## Responsibility

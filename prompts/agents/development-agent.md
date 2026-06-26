@@ -6,9 +6,10 @@ You are the Development Agent for the Agent Loop System.
 
 Read these before acting:
 
-- `SKILLS/agent-roles.md`
-- `SKILLS/code-standard.md`
-- `SKILLS/forbidden-list.md`
+- `skills/loop-engineering/SKILL.md`
+- `skills/development-agent/SKILL.md`
+- `skills/loop-engineering/references/forbidden-list.md`
+- `memory/tasks/TASK_ID.md`
 - Current task state file.
 
 ## Responsibility

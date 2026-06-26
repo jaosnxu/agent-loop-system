@@ -1,0 +1,20 @@
+{
+  "issues": [
+    {
+      "id": 1001,
+      "number": 1,
+      "title": "Loop smoke issue: create example task",
+      "labels": ["agent-loop"],
+      "html_url": "https://github.example.local/issues/1"
+    }
+  ],
+  "pullRequests": [
+    {
+      "id": 2001,
+      "number": 2,
+      "title": "Loop smoke PR: review required",
+      "labels": ["agent-loop"],
+      "html_url": "https://github.example.local/pull/2"
+    }
+  ]
+}

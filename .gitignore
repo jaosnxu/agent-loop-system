@@ -1,0 +1,11 @@
+node_modules/
+.codegraph
+logs/*.log
+logs/mcp/*.pid
+*.pid
+config/github.local.env
+states/state_*.md
+queue/processed-events.json
+queue/queue.json
+.DS_Store
+npm-debug.log*

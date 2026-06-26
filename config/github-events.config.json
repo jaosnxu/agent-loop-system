@@ -1,0 +1,11 @@
+{
+  "enabled": false,
+  "owner": "${GITHUB_OWNER}",
+  "repo": "${GITHUB_REPO}",
+  "tokenEnv": "GITHUB_TOKEN",
+  "issueLabels": [],
+  "titleKeywords": [],
+  "includeIssues": true,
+  "includePullRequests": true,
+  "fixtureFile": "fixtures/github-events.sample.json"
+}

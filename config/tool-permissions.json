@@ -1,0 +1,44 @@
+{
+  "version": "0.1.0",
+  "auditLog": "logs/tool-calls.log",
+  "roles": {
+    "triage": {
+      "filesystem": ["read"],
+      "shell": [],
+      "github": ["issues:read"]
+    },
+    "development": {
+      "filesystem": ["read", "write"],
+      "shell": ["execute"],
+      "github": ["contents:write", "pull_requests:write"]
+    },
+    "prototyper": {
+      "filesystem": ["read", "write"],
+      "shell": [],
+      "github": []
+    },
+    "review": {
+      "filesystem": ["read"],
+      "shell": ["execute_readonly"],
+      "github": ["contents:read", "pull_requests:read"]
+    },
+    "tester": {
+      "filesystem": ["read", "write"],
+      "shell": ["execute_readonly"],
+      "github": [],
+      "browser": ["test"]
+    },
+    "scoring": {
+      "filesystem": ["read"],
+      "shell": [],
+      "github": ["pull_requests:read"]
+    }
+  },
+  "criticalOperationsRequireHumanGate": [
+    "github:pull_requests:merge",
+    "filesystem:delete",
+    "shell:destructive",
+    "github:notifications:send",
+    "deployment:production"
+  ]
+}

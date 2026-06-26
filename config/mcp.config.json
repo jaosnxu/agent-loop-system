@@ -1,0 +1,47 @@
+{
+  "version": "0.1.0",
+  "description": "MCP connector template for the Agent Loop System. Token values are placeholders and must be provided by environment variables.",
+  "audit": {
+    "logFile": "logs/tool-calls.log",
+    "requireGateForCriticalOperations": true
+  },
+  "servers": {
+    "filesystem": {
+      "enabled": true,
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "../worktrees", "."],
+      "permissions": ["read", "write"]
+    },
+    "shell": {
+      "enabled": true,
+      "command": "node",
+      "args": ["scripts/mcp/shell_server.mjs"],
+      "permissions": ["execute"]
+    },
+    "github": {
+      "enabled": true,
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+        "GITHUB_OWNER": "${GITHUB_OWNER}",
+        "GITHUB_REPO": "${GITHUB_REPO}"
+      },
+      "permissions": ["issues:read", "pull_requests:write", "contents:write"]
+    },
+    "browser": {
+      "enabled": true,
+      "command": "node",
+      "args": ["scripts/mcp/browser_test.mjs"],
+      "permissions": ["test"],
+      "note": "Uses Playwright when installed; otherwise returns explicit static_fallback mode."
+    }
+  },
+  "rolePermissions": {
+    "triage": ["filesystem:read", "github:issues:read"],
+    "development": ["filesystem:read", "filesystem:write", "shell:execute", "github:contents:write"],
+    "review": ["filesystem:read", "shell:execute_readonly", "github:pull_requests:read"],
+    "scoring": ["filesystem:read"],
+    "tester": ["filesystem:read", "filesystem:write", "browser:test"]
+  }
+}

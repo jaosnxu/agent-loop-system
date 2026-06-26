@@ -17,7 +17,9 @@
     "verify:spine": "node scripts/state/verify_spine.mjs",
     "verify:mcp": "scripts/mcp/verify_mcp.sh",
     "verify:codex": "scripts/agents/verify_codex_connector.sh",
-    "verify:review-return": "scripts/orchestrator/verify_review_return.sh"
+    "verify:review-return": "scripts/orchestrator/verify_review_return.sh",
+    "verify:memory": "scripts/memory/verify_memory_spine.sh",
+    "verify:action-journal": "scripts/memory/verify_action_journal.sh"
   },
   "devDependencies": {
     "playwright": "^1.61.1"

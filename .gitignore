@@ -6,6 +6,7 @@ logs/mcp/*.pid
 *.pid
 config/github.local.env
 states/state_*.md
+memory/tasks/*.md
 queue/processed-events.json
 queue/queue.json
 .DS_Store

@@ -23,7 +23,27 @@
 
 - None
 
+## Action Journal
+
+- None
+
 ## Failure Records
+
+- None
+
+## Root Cause Analysis
+
+- None
+
+## Fix Plan
+
+- None
+
+## Next Checks
+
+- None
+
+## Retry Ledger
 
 - None
 

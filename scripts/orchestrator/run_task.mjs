@@ -45,6 +45,17 @@ function taskValue(name, fallback = "") {
 function run(command, args, cwd = systemRoot, allowFailure = false) {
   const result = spawnSync(command, args, { cwd, encoding: "utf8", stdio: "pipe" });
   appendLog("logs/orchestrator.log", `command cmd=${JSON.stringify([command, ...args].join(" "))} cwd=${JSON.stringify(cwd)} status=${result.status}`);
+  if (taskId) {
+    spawnSync(process.execPath, [
+      "scripts/state/record_action.mjs",
+      taskId,
+      "orchestrator",
+      `run ${path.basename(command)} ${args.slice(0, 3).join(" ")}`,
+      cwd,
+      `status=${result.status}`,
+      result.status === 0 ? "continue next DAG stage" : "inspect stderr and record root cause before retry"
+    ], { cwd: systemRoot, encoding: "utf8" });
+  }
   if (result.stdout.trim()) appendLog("logs/orchestrator.log", `stdout ${JSON.stringify(result.stdout.trim())}`);
   if (result.stderr.trim()) appendLog("logs/orchestrator.log", `stderr ${JSON.stringify(result.stderr.trim())}`);
   if (!allowFailure && result.status !== 0) {
@@ -60,6 +71,7 @@ function runWithRetry(label, fn) {
       return fn();
     } catch (error) {
       lastError = error;
+      run(process.execPath, ["scripts/state/record_diagnostic.mjs", taskId, label, String(attempt), String(maxRetries), error.message], systemRoot, true);
       logError("WARN", label, error, { attempt, maxRetries, taskId });
       appendLog("logs/orchestrator.log", `retry label=${label} attempt=${attempt}/${maxRetries} error=${JSON.stringify(error.message)}`);
     }
@@ -209,8 +221,10 @@ function safety(taskId) {
 }
 
 function runAgent(role, taskId) {
+  run(process.execPath, ["scripts/state/record_action.mjs", taskId, "orchestrator", `start ${role} agent`, `states/state_${taskId}.md`, "started", `${role} must read role prompt, Skill files, task state, and write result evidence`], systemRoot, true);
   const result = run(process.execPath, ["scripts/agents/run_agent.mjs", role, taskId], systemRoot, true);
   if (result.status !== 0) throw new Error(result.stderr || result.stdout);
+  run(process.execPath, ["scripts/state/record_action.mjs", taskId, role, "agent completed", `logs/codex/${taskId}.${role}.result.md`, "completed", "route according to DAG and gate result"], systemRoot, true);
 }
 
 function codexResultPath(taskId, role) {
@@ -293,6 +307,7 @@ function developExample(taskId) {
   }
   const result = spawnSync(process.execPath, ["scripts/mcp/mcp_tool.mjs", "development", "filesystem", "write", file, content], { cwd: systemRoot, encoding: "utf8" });
   if (result.status !== 0) throw new Error(result.stderr || result.stdout);
+  run(process.execPath, ["scripts/state/record_action.mjs", taskId, "development", "write task artifact", file, "file written", "run auto gate then independent review"], systemRoot, true);
   markEvidence(taskId, `development wrote ${file}`);
   markEvidence(taskId, "development read SKILLS/code-standard.md and SKILLS/forbidden-list.md before writing");
 }
@@ -527,12 +542,14 @@ function testPrototype(taskId) {
 function reviewExample(taskId) {
   const reviewOutput = parseReviewOutput(taskId);
   if (reviewOutput.available && reviewOutput.passed === false) {
+    run(process.execPath, ["scripts/state/record_action.mjs", taskId, "review", "block artifact", reviewOutput.resultPath, "P0/P1 or FAIL found", "return to development with root cause and fix plan"], systemRoot, true);
     run(process.execPath, ["scripts/state/record_failure.mjs", taskId, `Review Agent blocked: ${reviewOutput.summary}`]);
     setGate(taskId, "Review Gate", "failed");
     markEvidence(taskId, `review failed by Codex output ${reviewOutput.resultPath}`);
     return false;
   }
   if (reviewOutput.available && reviewOutput.passed === true) {
+    run(process.execPath, ["scripts/state/record_action.mjs", taskId, "review", "pass artifact", reviewOutput.resultPath, "review passed", "send to scoring"], systemRoot, true);
     setGate(taskId, "Review Gate", "passed");
     markEvidence(taskId, `review passed by Codex output ${reviewOutput.resultPath}`);
     return true;

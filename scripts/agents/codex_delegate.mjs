@@ -51,9 +51,11 @@ function recordCodexResult(taskId, role, resultOut) {
   let text = readState(taskId);
   const resultText = fs.existsSync(resultOut) ? fs.readFileSync(resultOut, "utf8").slice(0, 600).replace(/\s+/g, " ").trim() : "";
   text = setField(text, "Updated At", nowIso());
+  text = appendSectionItem(text, "Action Journal", `${nowIso()} actor=codex-${role} action="execute delegated Codex subtask" target=${JSON.stringify(resultOut)} result=${JSON.stringify(resultText)} next_check="orchestrator must parse role result and route next stage"`);
   text = appendSectionItem(text, "Evidence", `${nowIso()} codex role=${role} result=${resultOut} summary=${JSON.stringify(resultText)}`);
   writeState(taskId, text);
   syncBoard();
+  spawnSync(process.execPath, ["scripts/memory/sync_task_memory.mjs", taskId], { cwd: systemRoot, encoding: "utf8" });
 }
 
 try {

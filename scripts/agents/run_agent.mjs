@@ -65,6 +65,7 @@ try {
   }
   let text = state;
   text = setField(text, "Updated At", nowIso());
+  text = appendSectionItem(text, "Action Journal", `${nowIso()} actor=${role} action="read mandatory prompt and Skill files" target=${JSON.stringify(readFiles.join(","))} result=${JSON.stringify(sizes.join(","))} next_check="use these files as role constraints before doing work"`);
   text = appendSectionItem(text, "Evidence", `${nowIso()} role=${role} read=${sizes.join(",")} requirement=${JSON.stringify(requirement.slice(0, 120))} acceptance=${JSON.stringify(acceptance.slice(0, 120))}`);
   writeState(taskId, text);
   syncBoard();

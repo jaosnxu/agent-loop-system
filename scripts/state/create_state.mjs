@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { readText, writeState, validateTaskId, nowIso, appendLog } from "../lib/common.mjs";
 import { syncBoard } from "./sync_board_lib.mjs";
+import { spawnSync } from "node:child_process";
+import { systemRoot } from "../lib/common.mjs";
 
 const [taskId, rawTitle = "Untitled task", ...rest] = process.argv.slice(2);
 
@@ -30,6 +32,7 @@ try {
   text += `\n## Task Title\n\n- ${rawTitle}\n`;
   writeState(taskId, text);
   syncBoard();
+  spawnSync(process.execPath, ["scripts/memory/sync_task_memory.mjs", taskId], { cwd: systemRoot, encoding: "utf8" });
   appendLog("logs/state.log", `state_created task=${taskId} title=${JSON.stringify(rawTitle)} requirement=${JSON.stringify((options.requirement || "").slice(0, 160))} acceptance=${JSON.stringify((options.acceptance || "").slice(0, 160))}`);
   console.log(`STATE_CREATED states/state_${taskId}.md`);
 } catch (error) {

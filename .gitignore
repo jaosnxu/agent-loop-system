@@ -1,6 +1,7 @@
 node_modules/
 .codegraph
 logs/*.log
+logs/codex/
 logs/mcp/*.pid
 *.pid
 config/github.local.env

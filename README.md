@@ -278,6 +278,53 @@ Configured tool classes:
 
 Review Agent is read-only. Development Agent can write code inside the task worktree.
 
+## Codex Agent Runtime
+
+Codex CLI can be used as the model runtime for each role:
+
+```text
+config/codex.config.json
+```
+
+Default:
+
+```json
+{
+  "enabled": false
+}
+```
+
+When disabled, the LOOP still packages the role prompt, Skill rules, and task state into:
+
+```text
+logs/codex/<taskId>.<role>.prompt.md
+```
+
+When enabled, `scripts/agents/run_agent.mjs` delegates to:
+
+```bash
+codex exec
+```
+
+Role sandbox rules:
+
+```text
+triage/review/scoring: read-only
+development/prototyper/tester: workspace-write
+```
+
+Enable for a single run:
+
+```bash
+AGENT_LOOP_CODEX_ENABLED=1 node scripts/agents/run_agent.mjs development TASK_ID
+```
+
+Verify the connector without running a model:
+
+```bash
+scripts/agents/verify_codex_connector.sh
+```
+
 Start MCP services:
 
 ```bash

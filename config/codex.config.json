@@ -1,0 +1,16 @@
+{
+  "enabled": false,
+  "command": "codex",
+  "model": "",
+  "approvalPolicy": "never",
+  "promptMaxChars": 24000,
+  "outputDir": "logs/codex",
+  "sandboxByRole": {
+    "triage": "read-only",
+    "development": "workspace-write",
+    "prototyper": "workspace-write",
+    "tester": "workspace-write",
+    "review": "read-only",
+    "scoring": "read-only"
+  }
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import {
   appendLog,
   appendSectionItem,
@@ -68,6 +69,11 @@ try {
   writeState(taskId, text);
   syncBoard();
   appendLog("logs/orchestrator.log", `agent_role_ready role=${role} task=${taskId} files=${JSON.stringify(sizes)}`);
+  const delegate = spawnSync(process.execPath, ["scripts/agents/codex_delegate.mjs", role, taskId, config.prompt], { cwd: systemRoot, encoding: "utf8" });
+  appendLog("logs/orchestrator.log", `agent_codex_delegate role=${role} task=${taskId} status=${delegate.status}`);
+  if (delegate.status !== 0) {
+    throw new Error(delegate.stderr || delegate.stdout || `Codex delegate failed for role=${role}`);
+  }
   console.log(`AGENT_READY role=${role} task=${taskId}`);
 } catch (error) {
   appendLog("logs/error.log", `agent_role_failed role=${role || "unset"} task=${taskId || "unset"} error=${JSON.stringify(error.message)}`);

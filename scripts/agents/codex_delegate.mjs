@@ -17,6 +17,17 @@ function codexEnabled(config) {
   return config.enabled === true;
 }
 
+function activeProvider(config) {
+  const name = process.env.AGENT_LOOP_PROVIDER || config.activeProvider || "codex";
+  const provider = config.providers?.[name] || {
+    type: "codex-exec",
+    command: config.command || "codex",
+    enabled: true,
+    model: config.model || ""
+  };
+  return { name, provider };
+}
+
 function worktreePath(taskId) {
   return path.resolve(systemRoot, "..", "worktrees", taskId);
 }
@@ -45,6 +56,30 @@ function buildPrompt(stateText, promptText) {
     "- For read-only roles, do not modify files.",
     "- End with a concise result summary and any blockers."
   ].join("\n");
+}
+
+function runProvider({ config, providerName, provider, taskId, role, prompt, resultOut }) {
+  if (provider.enabled === false) {
+    throw new Error(`Provider disabled: ${providerName}`);
+  }
+  const command = provider.command || config.command || "codex";
+  const sandbox = config.sandboxByRole?.[role] || "read-only";
+  if (provider.type === "codex-exec") {
+    const args = ["exec", "-C", executionCwd(taskId), "-s", sandbox, "-o", resultOut];
+    const model = provider.model || config.model;
+    if (model) args.push("-m", model);
+    args.push("-");
+    return spawnSync(command, args, { cwd: systemRoot, input: prompt, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+  }
+  if (provider.type === "generic-stdin") {
+    const args = provider.args || [];
+    const result = spawnSync(command, args, { cwd: executionCwd(taskId), input: prompt, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+    if (result.status === 0) {
+      fs.writeFileSync(resultOut, result.stdout || "");
+    }
+    return result;
+  }
+  throw new Error(`Unsupported provider type: ${provider.type}`);
 }
 
 function recordCodexResult(taskId, role, resultOut) {
@@ -80,13 +115,9 @@ try {
     process.exit(0);
   }
 
-  const sandbox = config.sandboxByRole?.[role] || "read-only";
-  const args = ["exec", "-C", executionCwd(taskId), "-s", sandbox, "-o", resultOut];
-  if (config.model) args.push("-m", config.model);
-  args.push("-");
-
-  const result = spawnSync(config.command || "codex", args, { cwd: systemRoot, input: prompt, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
-  appendLog("logs/orchestrator.log", `codex_delegate role=${role} task=${taskId} status=${result.status} sandbox=${sandbox} cwd=${executionCwd(taskId)}`);
+  const { name: providerName, provider } = activeProvider(config);
+  const result = runProvider({ config, providerName, provider, taskId, role, prompt, resultOut });
+  appendLog("logs/orchestrator.log", `codex_delegate role=${role} task=${taskId} provider=${providerName} status=${result.status} cwd=${executionCwd(taskId)}`);
   if (result.stdout.trim()) appendLog("logs/orchestrator.log", `codex_stdout ${JSON.stringify(result.stdout.slice(0, 800))}`);
   if (result.stderr.trim()) appendLog("logs/orchestrator.log", `codex_stderr ${JSON.stringify(result.stderr.slice(0, 800))}`);
   if (result.status !== 0) throw new Error(`Codex delegate failed role=${role} status=${result.status}: ${result.stderr || result.stdout}`);

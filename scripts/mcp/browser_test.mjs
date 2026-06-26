@@ -3,7 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { appendLog, systemRoot } from "../lib/common.mjs";
 
-const [htmlPath, reportPath = ""] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const requirePlaywright = args.includes("--require-playwright") || process.env.AGENT_LOOP_REQUIRE_PLAYWRIGHT === "1";
+const positional = args.filter((arg) => arg !== "--require-playwright");
+const [htmlPath, reportPath = ""] = positional;
 
 function staticFallback(file) {
   const html = fs.readFileSync(file, "utf8");
@@ -41,6 +44,9 @@ try {
   try {
     result = await playwrightRun(htmlPath);
   } catch (error) {
+    if (requirePlaywright) {
+      throw new Error(`Playwright required but unavailable or failed: ${error.message}`);
+    }
     result = staticFallback(htmlPath);
     result.fallbackReason = error.message;
   }

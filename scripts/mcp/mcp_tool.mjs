@@ -89,8 +89,15 @@ export async function callTool({ role, tool, operation, target, content, command
       return { ok: out.status === 0, status: out.status, stdout: out.stdout, stderr: out.stderr };
     }
     if (tool === "browser" && operation === "test") {
-      const reportPath = content || "";
-      const out = spawnSync(process.execPath, ["scripts/mcp/browser_test.mjs", target, reportPath], { cwd: systemRoot, encoding: "utf8" });
+      let reportPath = content || "";
+      let requirePlaywright = false;
+      if (content?.trim().startsWith("{")) {
+        const payload = JSON.parse(content);
+        reportPath = payload.reportPath || "";
+        requirePlaywright = payload.requirePlaywright === true;
+      }
+      const args = ["scripts/mcp/browser_test.mjs", target, reportPath, ...(requirePlaywright ? ["--require-playwright"] : [])];
+      const out = spawnSync(process.execPath, args, { cwd: systemRoot, encoding: "utf8" });
       log(role, tool, operation, target, out.status === 0 ? "passed" : "failed");
       return { ok: out.status === 0, status: out.status, stdout: out.stdout, stderr: out.stderr };
     }
@@ -107,8 +114,9 @@ export async function callTool({ role, tool, operation, target, content, command
         req.on("error", reject);
         req.end();
       });
-      log(role, tool, operation, url, "passed");
-      return { ok: true, data };
+      const ok = data.status >= 200 && data.status < 400;
+      log(role, tool, operation, url, ok ? "passed" : `failed_http_${data.status}`);
+      return { ok, data };
     }
     throw new Error(`Unsupported tool operation ${tool}:${operation}`);
   } catch (error) {

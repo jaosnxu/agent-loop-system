@@ -210,6 +210,12 @@ Standard Skill directories:
 
 Longer standards live under each Skill's `references/` folder. Change these files to change agent behavior without changing code.
 
+Each agent run records bytes and sha256 checksums for the mandatory prompt and Skill files into task state and task memory. Verify this with:
+
+```bash
+scripts/agents/verify_skill_checksums.sh
+```
+
 ## Agent Prompts
 
 Role prompts live in:
@@ -225,6 +231,30 @@ triage -> development -> review -> scoring -> cleanup
 ```
 
 No role may review or score its own work.
+
+## Model Providers
+
+Model provider configuration lives in:
+
+```text
+config/codex.config.json
+```
+
+Current default provider:
+
+- `codex`
+
+Reserved provider slots:
+
+- `claude`
+- `opencode`
+- `gemini`
+
+Reserved providers stay disabled until their local CLI command and argument contract are verified on this machine. Verify provider configuration with:
+
+```bash
+scripts/agents/verify_model_providers.sh
+```
 
 ## MCP Configuration
 
@@ -345,9 +375,9 @@ Verify MCP configuration:
 scripts/mcp/verify_mcp.sh
 ```
 
-This verifies filesystem read/write inside a real temporary worktree, review write denial, shell execute, readonly shell denial, critical human-gate blocking, browser test entry, and GitHub token status.
+This verifies filesystem read/write inside a real temporary worktree, review write denial, shell execute, readonly shell denial, critical human-gate blocking, browser test entry, GitHub token status, and read-only GitHub repo/pulls/commits/actions-runs connectivity when a repository is configured.
 
-Browser testing uses Playwright when installed. If Playwright is not installed, the browser test runner reports `static_fallback` mode instead of pretending that a real browser ran.
+Browser testing uses Playwright when installed. If Playwright is not installed, the browser test runner reports `static_fallback` mode instead of pretending that a real browser ran. Final prototype or UI acceptance should call browser testing with `--require-playwright` or payload `{"requirePlaywright":true}` so static fallback cannot pass as final UI evidence.
 
 Install MCP dependencies:
 

@@ -1,10 +1,41 @@
 {
   "enabled": false,
+  "activeProvider": "codex",
   "command": "codex",
   "model": "",
   "approvalPolicy": "never",
   "promptMaxChars": 24000,
   "outputDir": "logs/codex",
+  "providers": {
+    "codex": {
+      "type": "codex-exec",
+      "command": "codex",
+      "enabled": true,
+      "model": "",
+      "notes": "Default local provider. Uses `codex exec` with role sandboxing."
+    },
+    "claude": {
+      "type": "generic-stdin",
+      "command": "claude",
+      "enabled": false,
+      "args": [],
+      "notes": "Reserved provider slot. Enable only after local Claude CLI is installed and command args are verified."
+    },
+    "opencode": {
+      "type": "generic-stdin",
+      "command": "opencode",
+      "enabled": false,
+      "args": [],
+      "notes": "Reserved provider slot. Enable only after local OpenCode CLI is installed and command args are verified."
+    },
+    "gemini": {
+      "type": "generic-stdin",
+      "command": "gemini",
+      "enabled": false,
+      "args": [],
+      "notes": "Reserved provider slot. Enable only after local Gemini CLI is installed and command args are verified."
+    }
+  },
   "sandboxByRole": {
     "triage": "read-only",
     "development": "workspace-write",

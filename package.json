@@ -17,10 +17,12 @@
     "verify:spine": "node scripts/state/verify_spine.mjs",
     "verify:mcp": "scripts/mcp/verify_mcp.sh",
     "verify:codex": "scripts/agents/verify_codex_connector.sh",
+    "verify:model-providers": "scripts/agents/verify_model_providers.sh",
     "verify:review-return": "scripts/orchestrator/verify_review_return.sh",
     "verify:memory": "scripts/memory/verify_memory_spine.sh",
     "verify:action-journal": "scripts/memory/verify_action_journal.sh",
-    "verify:skills": "scripts/agents/verify_skills_standard.sh"
+    "verify:skills": "scripts/agents/verify_skills_standard.sh",
+    "verify:skill-checksums": "scripts/agents/verify_skill_checksums.sh"
   },
   "devDependencies": {
     "playwright": "^1.61.1"

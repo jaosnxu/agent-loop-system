@@ -17,11 +17,11 @@ The system is not fake-empty. It has a real local LOOP skeleton with heartbeat s
 
 But it is not yet a complete production LOOP system. The biggest gaps are:
 
-1. Sub-agents now have a Codex delegate runner, but role isolation and result parsing still need stronger production hardening.
-2. MCP browser testing has a Playwright/static fallback runner, but production browser evidence and GitHub write/CI flows need more hardening.
+1. Sub-agents now have a provider-aware delegate runner with Codex active by default, but role isolation and result parsing still need stronger production hardening.
+2. MCP browser testing has a Playwright/static fallback runner and a required-Playwright mode, but GitHub write/CI governance still needs hardening.
 3. GitHub/MCP production flow is only partly real.
 4. Heartbeat dispatch is basic and not yet a robust autonomous supervisor.
-5. Skill enforcement now uses standard `skills/*/SKILL.md` files and records role reads, but still needs version/checksum evidence.
+5. Skill enforcement now uses standard `skills/*/SKILL.md` files and records role reads with sha256 evidence.
 6. Human gate exists, but approval audit details are thin.
 
 ## 1. Module Audit Summary
@@ -30,9 +30,9 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 |---|---:|---|---|
 | Heartbeat | B- | Has heartbeat rules, config, once/daemon/cron scripts, GitHub polling fixture/API path, queue dispatch | Needs stronger supervisor behavior, recovery policy, external connector matrix, no-progress detection, and heartbeat verification suite |
 | Worktree | B | Has create/assert/clean, branch naming, orphan fallback, cleanup | Needs mandatory assert before every write path, cleanup verification on all failure branches, branch/worktree residue monitor |
-| Skill | B | Uses standard `skills/*/SKILL.md` files and agent prompts | Needs version/checksum logs and broader skill verification fixtures |
-| Sub-agents | C | Has role prompts and stage names | Needs real isolated runner per role, model invocation, role-specific context passing, independent review/test/score outputs |
-| MCP connector | B- | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub/browser basics, install/start/verify scripts | Needs stronger GitHub PR/CI workflows, guaranteed real-browser mode, and broader operation fixtures |
+| Skill | B+ | Uses standard `skills/*/SKILL.md` files, agent prompts, role read logs, and sha256 evidence | Needs stronger changed-Skill behavior fixture and checksum drift reporting |
+| Sub-agents | C+ | Has role prompts, stage names, provider-aware delegate runner, and Codex active provider | Needs stronger role output schema, provider-specific smoke tests beyond Codex, and independent review/test/score parsing |
+| MCP connector | B | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub/browser basics, required-Playwright mode, install/start/verify scripts | Needs stronger GitHub write/PR/CI governance and approval continuation fixtures |
 | State / Memory spine | B | Has queue, state, board, logs, resume, counters, requirement/acceptance propagation | Needs stronger no-progress accounting, queue-board-state consistency checks, richer evidence schema, artifact links |
 | Human gate | B- | Has approve/reject scripts, pending_human, merge/prototype pause | Needs actor/reason audit, operation-specific approvals, non-bypass tests, UI/queue for approvals |
 
@@ -136,6 +136,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - `skills/scoring-agent/SKILL.md`
 - `prompts/agents/*.md`
 - `scripts/agents/verify_skills_standard.sh`
+- `scripts/agents/verify_skill_checksums.sh`
 - `scripts/gate/skill_check.mjs`
 
 ### What It Really Does Now
@@ -143,29 +144,28 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Standard Skill directories exist with YAML frontmatter.
 - Role docs and prompts tell agents what to read.
 - `scripts/agents/run_agent.mjs` reads `skills/loop-engineering/SKILL.md` and the role-specific Skill before delegation.
-- Role runs write Skill-read evidence into task state Action Journal and Evidence.
+- Role runs write Skill-read evidence with bytes and sha256 into task state Action Journal and Evidence.
 - `scripts/gate/skill_check.mjs` blocks when required Skill files are missing.
 - `scripts/agents/verify_skills_standard.sh` verifies the standard layout and blocks legacy uppercase Skill paths.
+- `scripts/agents/verify_skill_checksums.sh` proves checksum evidence reaches state and task memory.
 - Design standard contains Russian/default/server binding rules.
 - Prompt files now require requirement/acceptance.
 
 ### What Is Missing
 
-- No Skill version/checksum logging.
 - No dedicated fixture proving a changed Skill changes subsequent task behavior.
-- No checksum drift report in task evidence.
+- No checksum drift comparison report across task iterations.
 
 ### Required Fixes
 
 | Priority | Fix |
 |---|---|
-| P0 | Log Skill checksum/version per role |
 | P1 | Add a fixture proving changed Skill content is read on the next role run |
-| P1 | Include Skill checksum drift in task memory evidence |
+| P1 | Include Skill checksum drift comparison in task memory evidence |
 
 ### Acceptance
 
-- Every role run records Skill files read and their checksums.
+- Every role run records Skill files read and their sha256 checksums.
 - Missing `skills/loop-engineering/SKILL.md` blocks execution.
 - Updating Skill changes subsequent task behavior.
 
@@ -181,6 +181,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - `prompts/agents/scoring-agent.md`
 - `scripts/agents/run_agent.mjs`
 - `scripts/agents/codex_delegate.mjs`
+- `scripts/agents/verify_model_providers.sh`
 - `config/codex.config.json`
 - `scripts/orchestrator/run_task.mjs`
 
@@ -189,14 +190,15 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Stages exist in the orchestrator.
 - Prompt files describe role boundaries.
 - `scripts/agents/run_agent.mjs` prepares role-specific context and mandatory Skill reads.
-- `scripts/agents/codex_delegate.mjs` can invoke Codex per role and store separate prompt/result artifacts under `logs/codex/`.
+- `scripts/agents/codex_delegate.mjs` can invoke the active provider per role and store separate prompt/result artifacts under `logs/codex/`.
+- `config/codex.config.json` declares provider slots for `codex`, `claude`, `opencode`, and `gemini`; only Codex is enabled by default.
 - Review/scoring gates exist as scripted stages and can consume delegated role outputs.
 - Prototype/test stages exist.
 
 ### What Is Missing
 
 - Context isolation still needs stronger per-role evidence and stricter artifact parsing.
-- Only Codex is wired as a live model provider; Claude/Gemini/OpenCode provider switching is not implemented.
+- Only Codex is verified as a live model provider; Claude/Gemini/OpenCode slots exist but remain disabled until their local CLI contracts are verified.
 - Role outputs are stored under `logs/codex/`, but not yet normalized into a structured artifact schema.
 - Failure feedback exists, but root-cause-to-fix-plan parsing is still partly script-driven.
 
@@ -206,7 +208,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 |---|---|
 | P0 | Normalize role outputs under `states/artifacts/TASK_ID/ROLE.md` or task worktree `reports/` |
 | P0 | Make review and scoring parse structured developer output, gate output, and acceptance |
-| P1 | Add model provider config for Codex/Claude/OpenCode |
+| P1 | Add provider-specific smoke tests for Claude/OpenCode/Gemini after their local CLIs are installed |
 | P1 | Strengthen retry loop so root cause, fix plan, and next checks are parsed from each failed role result |
 
 ### Acceptance
@@ -240,6 +242,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Shell execution wrapper exists.
 - GitHub read operation exists.
 - Browser test operation exists and uses Playwright when installed, otherwise explicit `static_fallback`.
+- Browser test supports required-Playwright mode for final UI acceptance.
 - Role permissions exist.
 - Review write is blocked by permissions.
 - Readonly shell blocks mutating command patterns.
@@ -248,19 +251,17 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 ### What Is Missing
 
-- GitHub PR creation/review/CI flow is not fully exercised.
-- Browser runner can fall back to static checks when Playwright is unavailable; production proof should require real Playwright mode for UI tasks.
-- Verify script needs broader GitHub write-operation and CI evidence.
+- GitHub write operations such as PR creation/review are not executed in automated verification because they are high-risk and should route through human gate.
+- CI governance is read-only verified through Actions runs, but not yet tied to merge approval policy.
 - Critical operation human gate is central, but approval continuation needs more operation-specific fixtures.
 
 ### Required Fixes
 
 | Priority | Fix |
 |---|---|
-| P0 | Require real Playwright mode for prototype/UI acceptance tasks or mark static fallback as non-final |
 | P0 | Add operation-specific human-gate continuation fixtures |
-| P1 | Expand GitHub operations: issue read, PR create, PR review, CI status |
-| P1 | Expand `verify_mcp.sh` to prove GitHub write/CI flows and approval continuation |
+| P1 | Expand GitHub write operations behind human gate: PR create, PR review, merge readiness |
+| P1 | Tie CI read evidence to approval and merge gates |
 
 ### Acceptance
 

@@ -213,6 +213,25 @@ function runAgent(role, taskId) {
   if (result.status !== 0) throw new Error(result.stderr || result.stdout);
 }
 
+function codexResultPath(taskId, role) {
+  return path.join(systemRoot, "logs/codex", `${taskId}.${role}.result.md`);
+}
+
+function parseReviewOutput(taskId) {
+  const resultPath = codexResultPath(taskId, "review");
+  if (!fs.existsSync(resultPath)) return { available: false, passed: null, resultPath };
+  const text = fs.readFileSync(resultPath, "utf8");
+  const hasFail = /gate_result:\s*FAIL\b/i.test(text) || /next_stage:\s*returned_to_development\b/i.test(text);
+  const hasBlockingFinding = /severity:\s*P[01]\b/i.test(text);
+  const hasPass = /gate_result:\s*PASS\b/i.test(text) || /next_stage:\s*scoring\b/i.test(text);
+  return {
+    available: true,
+    passed: hasFail || hasBlockingFinding ? false : hasPass ? true : null,
+    resultPath,
+    summary: text.slice(0, 500).replace(/\s+/g, " ").trim()
+  };
+}
+
 function developExample(taskId) {
   if (options.get("fail-step") === "development") {
     throw new Error("Injected development failure for retry verification.");
@@ -506,6 +525,18 @@ function testPrototype(taskId) {
 }
 
 function reviewExample(taskId) {
+  const reviewOutput = parseReviewOutput(taskId);
+  if (reviewOutput.available && reviewOutput.passed === false) {
+    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, `Review Agent blocked: ${reviewOutput.summary}`]);
+    setGate(taskId, "Review Gate", "failed");
+    markEvidence(taskId, `review failed by Codex output ${reviewOutput.resultPath}`);
+    return false;
+  }
+  if (reviewOutput.available && reviewOutput.passed === true) {
+    setGate(taskId, "Review Gate", "passed");
+    markEvidence(taskId, `review passed by Codex output ${reviewOutput.resultPath}`);
+    return true;
+  }
   const file = taskType === "changelog" ? path.join(worktreePath(taskId), "CHANGELOG.md") : path.join(worktreePath(taskId), "example-task-output.md");
   if (!fs.existsSync(file)) {
     run(process.execPath, ["scripts/state/record_failure.mjs", taskId, "Review failed: expected output file missing"]);

@@ -17,6 +17,15 @@ Independently inspect the task output and produce a findings list. You are read-
 
 You must compare the artifact against the state file's `requirement` and `acceptance`. Missing core requirements are P0/P1 findings even when the generic tool gate passes.
 
+Review means checking whether the task artifact actually satisfies the task requirement and acceptance criteria. It is not a style-only read. You must inspect:
+
+- Task state requirement and acceptance.
+- Changed files or generated artifact inside the task worktree.
+- Automatic gate result, if present.
+- Missing files, wrong domain output, permission violations, unsafe writes, and missing evidence.
+
+If any P0 or P1 finding exists, output `gate_result: FAIL` and `next_stage: returned_to_development`.
+
 ## Inputs
 
 - Task state file.

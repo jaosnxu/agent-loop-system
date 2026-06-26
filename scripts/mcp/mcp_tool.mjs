@@ -9,7 +9,7 @@ import { logError } from "../lib/error_logger.mjs";
 import { githubRepoConfig, githubToken } from "../lib/github_config.mjs";
 
 const mainRepoRoot = path.resolve(systemRoot, "..");
-const worktreesRoot = path.resolve(systemRoot, "../..", "worktrees");
+const worktreesRoot = path.resolve(systemRoot, "..", "worktrees");
 const permissionConfig = JSON.parse(fs.readFileSync(path.join(systemRoot, "config/tool-permissions.json"), "utf8"));
 
 function allowed(role, tool, operation) {

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-WORKTREES_ROOT="$(cd "$ROOT/../.." && pwd)/worktrees"
+WORKTREES_ROOT="$(cd "$ROOT/.." && pwd)/worktrees"
 PROJECT_ROOT="$(cd "$ROOT/.." && pwd)"
 
 mkdir -p "$WORKTREES_ROOT"

@@ -104,7 +104,7 @@ function currentStage(taskId) {
 }
 
 function worktreePath(taskId) {
-  return path.resolve(systemRoot, "../..", "worktrees", taskId);
+  return path.resolve(systemRoot, "..", "worktrees", taskId);
 }
 
 function taskContext(taskId) {

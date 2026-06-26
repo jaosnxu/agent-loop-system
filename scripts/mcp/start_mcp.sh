@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PID_DIR="$ROOT/logs/mcp"
 LOG_DIR="$ROOT/logs"
-WORKTREES_ROOT="$(cd "$ROOT/../.." && pwd)/worktrees"
+WORKTREES_ROOT="$(cd "$ROOT/.." && pwd)/worktrees"
 PROJECT_ROOT="$(cd "$ROOT/.." && pwd)"
 LOCAL_GITHUB_ENV="$ROOT/config/github.local.env"
 

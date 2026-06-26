@@ -38,9 +38,10 @@ cleanup_task loop-verify-bad
 rm -rf /tmp/loop-verify-bad-template
 echo "VERIFY_PASS wrong template blocked"
 
-cleanup_task loop-verify-contract
+CONTRACT_TASK_ID="loop-verify-contract"
+cleanup_task "$CONTRACT_TASK_ID"
 set +e
-node scripts/orchestrator/run_task.mjs loop-verify-contract --title="Contract system prototype gate test" --type=prototype --priority=P0 --requirement="$REQ" --acceptance="$ACC" >/tmp/loop-verify-contract.out 2>/tmp/loop-verify-contract.err
+node scripts/orchestrator/run_task.mjs "$CONTRACT_TASK_ID" --title="Contract system prototype gate test" --type=prototype --priority=P0 --requirement="$REQ" --acceptance="$ACC" >/tmp/loop-verify-contract.out 2>/tmp/loop-verify-contract.err
 rc=$?
 set -e
 if [ "$rc" -ne 90 ]; then
@@ -50,9 +51,9 @@ if [ "$rc" -ne 90 ]; then
   exit 1
 fi
 grep -q "PENDING_HUMAN" /tmp/loop-verify-contract.out
-grep -q "Passed: 24" /Users/xuyongwenmacbookpro/Documents/worktrees/loop-verify-contract/reports/prototype-test-report.md
-grep -q "Failed: 0" /Users/xuyongwenmacbookpro/Documents/worktrees/loop-verify-contract/reports/prototype-test-report.md
-cleanup_task loop-verify-contract
+grep -q "Passed: 24" "../worktrees/$CONTRACT_TASK_ID/reports/prototype-test-report.md"
+grep -q "Failed: 0" "../worktrees/$CONTRACT_TASK_ID/reports/prototype-test-report.md"
+cleanup_task "$CONTRACT_TASK_ID"
 echo "VERIFY_PASS correct contract task reached human gate"
 
 echo "VERIFY_REQUIREMENT_GATE_OK"

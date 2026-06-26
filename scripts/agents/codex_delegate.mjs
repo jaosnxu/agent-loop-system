@@ -2,7 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { appendLog, ensureDir, getField, readState, systemRoot, validateTaskId } from "../lib/common.mjs";
+import { appendLog, appendSectionItem, ensureDir, nowIso, readState, setField, systemRoot, validateTaskId, writeState } from "../lib/common.mjs";
+import { syncBoard } from "../state/sync_board_lib.mjs";
 
 const [role, taskId, promptFileArg = ""] = process.argv.slice(2);
 
@@ -46,6 +47,15 @@ function buildPrompt(stateText, promptText) {
   ].join("\n");
 }
 
+function recordCodexResult(taskId, role, resultOut) {
+  let text = readState(taskId);
+  const resultText = fs.existsSync(resultOut) ? fs.readFileSync(resultOut, "utf8").slice(0, 600).replace(/\s+/g, " ").trim() : "";
+  text = setField(text, "Updated At", nowIso());
+  text = appendSectionItem(text, "Evidence", `${nowIso()} codex role=${role} result=${resultOut} summary=${JSON.stringify(resultText)}`);
+  writeState(taskId, text);
+  syncBoard();
+}
+
 try {
   if (!role) throw new Error("Missing role");
   validateTaskId(taskId);
@@ -69,7 +79,7 @@ try {
   }
 
   const sandbox = config.sandboxByRole?.[role] || "read-only";
-  const args = ["exec", "-C", executionCwd(taskId), "-s", sandbox, "-a", config.approvalPolicy || "never", "-o", resultOut];
+  const args = ["exec", "-C", executionCwd(taskId), "-s", sandbox, "-o", resultOut];
   if (config.model) args.push("-m", config.model);
   args.push("-");
 
@@ -79,6 +89,7 @@ try {
   if (result.stderr.trim()) appendLog("logs/orchestrator.log", `codex_stderr ${JSON.stringify(result.stderr.slice(0, 800))}`);
   if (result.status !== 0) throw new Error(`Codex delegate failed role=${role} status=${result.status}: ${result.stderr || result.stdout}`);
 
+  recordCodexResult(taskId, role, resultOut);
   console.log(`CODEX_DELEGATE_OK role=${role} task=${taskId} result=${resultOut}`);
 } catch (error) {
   appendLog("logs/error.log", `codex_delegate_failed role=${role || "unset"} task=${taskId || "unset"} error=${JSON.stringify(error.message)}`);

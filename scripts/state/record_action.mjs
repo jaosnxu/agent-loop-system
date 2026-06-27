@@ -3,6 +3,7 @@ import { appendLog, appendSectionItem, nowIso, readState, setField, validateTask
 import { syncBoard } from "./sync_board_lib.mjs";
 import { spawnSync } from "node:child_process";
 import { systemRoot } from "../lib/common.mjs";
+import { recordStructuredEvidence } from "./structured_evidence_lib.mjs";
 
 const [taskId, actor = "system", action = "unspecified", target = "", result = "", nextCheck = ""] = process.argv.slice(2);
 
@@ -19,6 +20,15 @@ try {
     "Action Journal",
     `${nowIso()} actor=${actor} action=${JSON.stringify(compact(action))} target=${JSON.stringify(compact(target))} result=${JSON.stringify(compact(result))} next_check=${JSON.stringify(compact(nextCheck))}`
   );
+  text = recordStructuredEvidence(taskId, {
+    type: "action",
+    actor,
+    action,
+    target,
+    result,
+    nextCheck,
+    details: { source: "record_action.mjs" }
+  }, text).text;
   writeState(taskId, text);
   syncBoard();
   spawnSync(process.execPath, ["scripts/memory/sync_task_memory.mjs", taskId], { cwd: systemRoot, encoding: "utf8" });

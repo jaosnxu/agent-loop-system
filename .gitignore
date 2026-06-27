@@ -10,6 +10,7 @@ config/human-gate.operators.json
 config/human-gate.operators.local.json
 states/state_*.md
 memory/tasks/*.md
+memory/evidence/*.jsonl
 queue/processed-events.json
 queue/queue.json
 .DS_Store

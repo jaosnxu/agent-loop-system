@@ -5,7 +5,7 @@ import { getField, systemRoot, appendLog } from "../lib/common.mjs";
 import { readQueue } from "../queue/queue_lib.mjs";
 import { syncBoard } from "./sync_board_lib.mjs";
 
-const requiredFields = [
+const baseRequiredFields = [
   "Task ID",
   "Current Stage",
   "Created At",
@@ -14,7 +14,10 @@ const requiredFields = [
   "No Progress Count",
   "Tool Call Count",
   "Worktree Path",
-  "Branch",
+  "Branch"
+];
+
+const specRequiredFields = [
   "Requirement",
   "Acceptance"
 ];
@@ -30,11 +33,17 @@ try {
     const text = fs.readFileSync(path.join(statesDir, file), "utf8");
     const taskId = getField(text, "Task ID") || file.replace(/^state_/, "").replace(/\.md$/, "");
     const queued = queue.tasks.find((task) => task.taskId === taskId);
-    const strict = Boolean(queued?.requirement || queued?.acceptance || getField(text, "Task Type"));
-    for (const field of requiredFields) {
+    const taskType = getField(text, "Task Type");
+    const strictSpec = Boolean(queued?.requirement || queued?.acceptance || ["development", "prototype"].includes(taskType));
+    for (const field of baseRequiredFields) {
       if (!getField(text, field)) {
-        if (strict) failures.push(`${taskId}: missing field ${field}`);
-        else appendLog("logs/state.log", `spine_verify_legacy_warning task=${taskId} missing=${JSON.stringify(field)}`);
+        failures.push(`${taskId}: missing field ${field}`);
+      }
+    }
+    for (const field of specRequiredFields) {
+      if (!getField(text, field)) {
+        if (strictSpec) failures.push(`${taskId}: missing field ${field}`);
+        else appendLog("logs/state.log", `spine_verify_legacy_warning task=${taskId} missing=${JSON.stringify(field)} type=${JSON.stringify(taskType || "legacy")}`);
       }
     }
     if (!text.includes("## Completed Steps")) failures.push(`${taskId}: missing Completed Steps`);

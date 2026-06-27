@@ -122,6 +122,14 @@ Task state files:
 states/state_TASK_ID.md
 ```
 
+Structured machine-readable evidence:
+
+```text
+memory/evidence/TASK_ID.jsonl
+```
+
+Each structured evidence row uses `schemaVersion=structured-evidence/v1` and records `taskId`, `type`, `actor`, `action`, `target`, `result`, `nextCheck`, `details`, and `createdAt`. The latest evidence ids are also mirrored into the task state under `## Structured Evidence`, then synced into `memory/tasks/TASK_ID.md`.
+
 Global board:
 
 ```text
@@ -213,6 +221,12 @@ Artifact hash and no-progress accounting:
 
 ```bash
 scripts/state/verify_artifact_hash.sh
+```
+
+Structured evidence spine:
+
+```bash
+scripts/state/verify_structured_evidence.sh
 ```
 
 Cleanup matrix:
@@ -935,6 +949,7 @@ scripts/human/verify_approval_queue.sh
 scripts/agents/verify_skill_drift.sh
 scripts/orchestrator/verify_structured_decisions.sh
 scripts/state/verify_artifact_hash.sh
+scripts/state/verify_structured_evidence.sh
 scripts/github/verify_pr_ci_gate.sh
 scripts/github/verify_merge_readiness.sh
 scripts/github/verify_pr_continuation.sh

@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { appendLog, getField, nowIso, readState, setField, systemRoot, validateTaskId, writeState } from "../lib/common.mjs";
 import { syncBoard } from "./sync_board_lib.mjs";
 import { spawnSync } from "node:child_process";
+import { recordStructuredEvidence } from "./structured_evidence_lib.mjs";
 
 const [taskId, targetArg = "", label = "artifact"] = process.argv.slice(2);
 
@@ -71,6 +72,15 @@ try {
   text = setField(text, "No Progress Count", String(unchanged ? currentNoProgress + 1 : 0));
   text = appendItem(text, "Artifact Hashes", `${nowIso()} label=${label} target=${JSON.stringify(result.resolved)} files=${result.files} hash=${result.hash} previous=${previous || "none"} status=${unchanged ? "unchanged" : "changed"}`);
   text = appendItem(text, "Action Journal", `${nowIso()} actor=state action="record artifact hash" target=${JSON.stringify(result.resolved)} result=${unchanged ? "unchanged" : "changed"} next_check="safety brake or heartbeat must act on repeated no-progress"`);
+  text = recordStructuredEvidence(taskId, {
+    type: "artifact_hash",
+    actor: "state",
+    action: "record_artifact_hash",
+    target: result.resolved,
+    result: unchanged ? "unchanged" : "changed",
+    nextCheck: "safety brake or heartbeat must act on repeated no-progress",
+    details: { label, files: result.files, hash: result.hash, previous: previous || "none" }
+  }, text).text;
   writeState(taskId, text);
   syncBoard();
   spawnSync(process.execPath, ["scripts/memory/sync_task_memory.mjs", taskId], { cwd: systemRoot, encoding: "utf8" });

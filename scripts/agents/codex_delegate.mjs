@@ -4,6 +4,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { appendLog, appendSectionItem, ensureDir, nowIso, readState, setField, systemRoot, validateTaskId, writeState } from "../lib/common.mjs";
 import { syncBoard } from "../state/sync_board_lib.mjs";
+import { recordStructuredEvidence } from "../state/structured_evidence_lib.mjs";
 
 const [role, taskId, promptFileArg = ""] = process.argv.slice(2);
 
@@ -115,6 +116,15 @@ function recordCodexResult(taskId, role, providerName, promptOut, resultOut, sta
   text = setField(text, "Updated At", nowIso());
   text = appendSectionItem(text, "Action Journal", `${nowIso()} actor=codex-${role} action="execute delegated model subtask" target=${JSON.stringify(structuredOut)} result=${JSON.stringify(resultText)} next_check="orchestrator must parse structured role result and route next stage"`);
   text = appendSectionItem(text, "Evidence", `${nowIso()} agent_result role=${role} provider=${providerName} status=${status} structured=${structuredOut} raw=${resultOut} summary=${JSON.stringify(resultText)}`);
+  text = recordStructuredEvidence(taskId, {
+    type: "agent_result",
+    actor: `codex-${role}`,
+    action: "execute delegated model subtask",
+    target: structuredOut,
+    result: status,
+    nextCheck: "orchestrator must parse structured role result and route next stage",
+    details: { role, provider: providerName, status, statusCode, promptPath: promptOut, rawResultPath: resultOut, summary: resultText }
+  }, text).text;
   writeState(taskId, text);
   syncBoard();
   spawnSync(process.execPath, ["scripts/memory/sync_task_memory.mjs", taskId], { cwd: systemRoot, encoding: "utf8" });

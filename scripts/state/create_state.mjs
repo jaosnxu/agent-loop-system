@@ -3,6 +3,7 @@ import { readText, writeState, validateTaskId, nowIso, appendLog } from "../lib/
 import { syncBoard } from "./sync_board_lib.mjs";
 import { spawnSync } from "node:child_process";
 import { systemRoot } from "../lib/common.mjs";
+import { recordStructuredEvidence } from "./structured_evidence_lib.mjs";
 
 const [taskId, rawTitle = "Untitled task", ...rest] = process.argv.slice(2);
 
@@ -29,6 +30,21 @@ try {
     .replace("- Scope: unset", `- Scope: ${options.scope || ""}`)
     .replace("- Requirement: unset", `- Requirement: ${options.requirement || ""}`)
     .replace("- Acceptance: unset", `- Acceptance: ${options.acceptance || ""}`);
+  text = recordStructuredEvidence(taskId, {
+    type: "state_created",
+    actor: "state",
+    action: "create_state",
+    target: `states/state_${taskId}.md`,
+    result: "created",
+    nextCheck: "triage must classify and route the task",
+    details: {
+      title: rawTitle,
+      priority: options.priority || "unset",
+      taskType: options.type || "unset",
+      requirement: options.requirement || "",
+      acceptance: options.acceptance || ""
+    }
+  }, text).text;
   text += `\n## Task Title\n\n- ${rawTitle}\n`;
   writeState(taskId, text);
   syncBoard();

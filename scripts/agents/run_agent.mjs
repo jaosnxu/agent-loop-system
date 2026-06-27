@@ -15,6 +15,7 @@ import {
   writeState
 } from "../lib/common.mjs";
 import { syncBoard } from "../state/sync_board_lib.mjs";
+import { recordStructuredEvidence } from "../state/structured_evidence_lib.mjs";
 
 const [role, taskId] = process.argv.slice(2);
 
@@ -76,6 +77,15 @@ try {
   text = setField(text, "Updated At", nowIso());
   text = appendSectionItem(text, "Action Journal", `${nowIso()} actor=${role} action="read mandatory prompt and Skill files" target=${JSON.stringify(readFiles.join(","))} result=${JSON.stringify(fileChecks.join(","))} next_check="use these file checksums as role constraints before doing work"`);
   text = appendSectionItem(text, "Evidence", `${nowIso()} role=${role} read=${fileChecks.join(",")} skill_checks=${JSON.stringify(skillChecks)} requirement=${JSON.stringify(requirement.slice(0, 120))} acceptance=${JSON.stringify(acceptance.slice(0, 120))}`);
+  text = recordStructuredEvidence(taskId, {
+    type: "role_read",
+    actor: role,
+    action: "read mandatory prompt and Skill files",
+    target: readFiles.join(","),
+    result: fileChecks.join(","),
+    nextCheck: "use these file checksums as role constraints before doing work",
+    details: { role, readFiles, fileChecks, skillChecks, requirement: requirement.slice(0, 240), acceptance: acceptance.slice(0, 240) }
+  }, text).text;
   writeState(taskId, text);
   syncBoard();
   appendLog("logs/orchestrator.log", `agent_role_ready role=${role} task=${taskId} files=${JSON.stringify(fileChecks)}`);

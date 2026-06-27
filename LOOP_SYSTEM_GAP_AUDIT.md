@@ -33,7 +33,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 | Skill | A- | Uses standard `skills/*/SKILL.md`, role read logs, sha256 evidence, checksum verifier, and Skill drift fixture | Needs richer checksum drift reports across long-running tasks |
 | Sub-agents | B | Has role prompts, stage names, provider-aware delegate runner, Codex default provider slot, structured result JSON, and review/scoring decision parsing | Needs explicit model-delegation enablement, provider-specific smoke tests beyond Codex, and stricter context minimization |
 | MCP connector | A- | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub/browser basics, required-Playwright mode, install/start/verify scripts, GitHub PR/CI read, write-intent human gate, merge readiness gate, and PR create/review/merge dry-run/live continuation framework | Needs live write verification in a safe staging repository |
-| State / Memory spine | B+ | Has queue, state, board, logs, resume, counters, requirement/acceptance propagation, action journal, artifact hashes, no-progress accounting | Needs token budget tied to real provider usage and richer evidence schema |
+| State / Memory spine | A- | Has queue, state, board, logs, resume, counters, requirement/acceptance propagation, action journal, artifact hashes, no-progress accounting, structured evidence JSONL, and state/memory evidence mirrors | Needs token budget tied to real provider usage and broader structured coverage for future direct state writers |
 | Human gate | A- | Has approve/reject scripts, pending_human, merge/prototype pause, durable approval queue, request-level approve/reject, report command, local approval UI, viewer/approver/admin RBAC, audit ledger, actor/reason/operation/gate id evidence, PR continuation, filesystem delete continuation, and notification continuation | Needs production identity provider integration and broader operation-specific execution continuations |
 
 ## 2. Heartbeat Audit
@@ -298,25 +298,28 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Stage updates append completed steps.
 - Resume state returns fields.
 - Board sync exists.
+- `scripts/state/verify_spine.mjs` checks queue/state/board consistency.
 - Safety brake checks counters.
 - Gate logs acceptance checks.
 - `scripts/state/record_artifact_hash.mjs` records file/directory hashes in state and memory.
 - Repeated unchanged artifact hashes increment `No Progress Count`.
 - `scripts/state/verify_artifact_hash.sh` verifies changed vs unchanged output accounting.
+- `scripts/state/record_structured_evidence.mjs` and `scripts/state/structured_evidence_lib.mjs` write machine-readable `structured-evidence/v1` JSONL under `memory/evidence/TASK_ID.jsonl`.
+- State files mirror evidence ids in `## Structured Evidence`, and `memory/tasks/TASK_ID.md` syncs both the state mirror and JSONL evidence tail.
+- Create, stage transition, action, failure, diagnostic, artifact hash, role read, and delegated agent result paths now write structured evidence.
+- `scripts/state/verify_structured_evidence.sh` verifies state, memory, JSONL schema, required evidence types, artifact hash details, and diagnostic root cause details.
 
 ### What Is Missing
 
-- Evidence is free text, not structured.
-- Queue-state-board consistency has no standalone verifier.
 - Token budget is recorded but not connected to actual model/provider usage.
 - Old bad state files may remain and confuse board.
+- Some future direct state writers may still need structured evidence calls as new operations are added.
 
 ### Required Fixes
 
 | Priority | Fix |
 |---|---|
-| P0 | Add `scripts/state/verify_spine.mjs` checking queue/state/board/log consistency |
-| P0 | Add structured evidence format for artifact path, gate, role, result |
+| P1 | Keep expanding structured evidence coverage for new direct state writers |
 | P1 | Connect token/tool budget to real provider/tool usage |
 
 ### Acceptance
@@ -325,6 +328,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - A failed task records failure and next action.
 - Queue, state, and board agree.
 - Repeated no-progress terminates.
+- `scripts/state/verify_structured_evidence.sh` passes and proves new tasks write machine-readable evidence to state, memory, and JSONL.
 
 ## 8. Human Gate Audit
 
@@ -380,7 +384,7 @@ Do not jump directly to business tasks. Repair in this order:
 1. Provider hardening: add live smoke tests for Claude/OpenCode/Gemini after local CLI contracts are verified.
 2. Human gate continuation: add operation-specific execution continuations after request approval.
 3. GitHub governance: add safe staging-repo live verification for post-approval PR create/review/merge continuations.
-4. State evidence: convert remaining free-text evidence into stricter structured records.
+4. State evidence: keep expanding structured evidence coverage for any newly added direct state writers.
 5. Heartbeat observability: add product-specific connector deployment configs and dashboard/alert summary output.
 6. Worktree coverage: keep adding cleanup/assert fixtures for new task types and write integrations.
 7. Approval UI: add a dashboard beyond CLI pending/report commands.
@@ -392,7 +396,7 @@ The smallest useful repair batch is:
 1. Provider-specific smoke tests for non-Codex providers once those CLIs are installed and their argument contracts are verified.
 2. Safe staging-repo live verification for PR create/update, PR review, and merge.
 3. Operation-specific execution continuation fixtures for any new critical operation.
-4. Structured evidence schema for gates, role outputs, root-cause analysis, and fix plans.
+4. Token/tool budget accounting from real provider/tool usage.
 5. Product-specific heartbeat connector deployment configs and operational dashboard/alerts.
 
 After the current batch, the system is a stronger local LOOP runtime with real isolation, state, gate, and approval evidence. It still should not be called a complete production autonomous software factory until model-backed sub-agent execution and real external integrations are proven end to end.

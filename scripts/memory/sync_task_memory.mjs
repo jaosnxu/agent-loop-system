@@ -13,6 +13,13 @@ function section(text, title) {
   return text.slice(start + heading.length, next === -1 ? text.length : next).trim() || "- None";
 }
 
+function evidenceJsonl(taskId) {
+  const file = path.join(systemRoot, "memory/evidence", `${taskId}.jsonl`);
+  if (!fs.existsSync(file)) return "- None";
+  const lines = fs.readFileSync(file, "utf8").trim().split("\n").filter(Boolean);
+  return lines.slice(-20).join("\n") || "- None";
+}
+
 try {
   validateTaskId(taskId);
   const state = readState(taskId);
@@ -60,6 +67,14 @@ try {
     "## Artifact Hashes",
     "",
     section(state, "Artifact Hashes"),
+    "",
+    "## Structured Evidence",
+    "",
+    section(state, "Structured Evidence"),
+    "",
+    "## Structured Evidence JSONL",
+    "",
+    evidenceJsonl(taskId),
     "",
     "## Next Action",
     "",

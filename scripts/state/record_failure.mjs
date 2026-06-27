@@ -3,6 +3,7 @@ import { readState, writeState, setField, appendSectionItem, nowIso, appendLog, 
 import { syncBoard } from "./sync_board_lib.mjs";
 import { spawnSync } from "node:child_process";
 import { systemRoot } from "../lib/common.mjs";
+import { recordStructuredEvidence } from "./structured_evidence_lib.mjs";
 
 const [taskId, reason = "unspecified failure"] = process.argv.slice(2);
 
@@ -13,6 +14,15 @@ try {
   text = setField(text, "Updated At", nowIso());
   text = appendSectionItem(text, "Failure Records", `${nowIso()} ${reason}`);
   text = text.replace(/## Next Action\n\n(?:- .*\n?)+/, "## Next Action\n\n- Development Agent must fix the recorded failure and rerun gates.\n");
+  text = recordStructuredEvidence(taskId, {
+    type: "failure",
+    actor: "state",
+    action: "record_failure",
+    target: `states/state_${taskId}.md`,
+    result: "returned_to_development",
+    nextCheck: "development must fix the recorded failure and rerun gates",
+    details: { reason }
+  }, text).text;
   writeState(taskId, text);
   syncBoard();
   spawnSync(process.execPath, ["scripts/memory/sync_task_memory.mjs", taskId], { cwd: systemRoot, encoding: "utf8" });

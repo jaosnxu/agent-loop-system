@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { appendLog, ensureDir, systemRoot } from "../lib/common.mjs";
 
 const approvalsPath = path.join(systemRoot, "queue/human-approvals.json");
+const defaultOperatorsPath = "config/human-gate.operators.json";
 
 function parseArgs(args) {
   const options = new Map();
@@ -22,6 +23,48 @@ function readApprovals() {
   ensureDir(path.dirname(approvalsPath));
   if (!fs.existsSync(approvalsPath)) return { version: "0.1.0", requests: [] };
   return JSON.parse(fs.readFileSync(approvalsPath, "utf8"));
+}
+
+function sha256(value) {
+  return crypto.createHash("sha256").update(String(value || "")).digest("hex");
+}
+
+function readJsonIfExists(filePath) {
+  const full = path.isAbsolute(filePath) ? filePath : path.join(systemRoot, filePath);
+  if (!fs.existsSync(full)) return null;
+  return JSON.parse(fs.readFileSync(full, "utf8"));
+}
+
+function loadOperators({ operatorConfigPath, fallbackToken }) {
+  const config = readJsonIfExists(operatorConfigPath);
+  if (!config) {
+    return [{
+      id: "operator",
+      displayName: "Local Operator",
+      role: "approver",
+      tokenHash: sha256(fallbackToken),
+      source: "startup-token"
+    }];
+  }
+  const operators = [];
+  for (const operator of config.operators || []) {
+    if (operator.disabled) continue;
+    const token = operator.tokenEnv ? process.env[operator.tokenEnv] : "";
+    const tokenHash = operator.tokenHash || (token ? sha256(token) : "");
+    if (!operator.id || !tokenHash) continue;
+    operators.push({
+      id: operator.id,
+      displayName: operator.displayName || operator.id,
+      role: operator.role || "viewer",
+      tokenHash: tokenHash.replace(/^sha256:/, ""),
+      source: operator.tokenEnv ? `env:${operator.tokenEnv}` : "hash"
+    });
+  }
+  return operators;
+}
+
+function canDecide(operator) {
+  return ["approver", "admin"].includes(operator?.role);
 }
 
 function summarize(requests) {
@@ -46,25 +89,23 @@ function short(value, max = 180) {
   return text.length > max ? `${text.slice(0, max - 1)}...` : text;
 }
 
-function renderRequestCard(request, token) {
+function renderRequestCard(request, tokenValue, operator) {
   const operation = `${request.tool || "unknown"}:${request.operation || "unknown"}`;
   const target = request.target || request.command || "";
   const pending = request.status === "pending";
-  const actions = pending ? `
+  const actions = pending && canDecide(operator) ? `
       <form method="post" action="/approve">
-        <input type="hidden" name="token" value="${escapeHtml(token)}">
+        <input type="hidden" name="token" value="${escapeHtml(tokenValue)}">
         <input type="hidden" name="approvalId" value="${escapeHtml(request.approvalId)}">
-        <input name="actor" value="operator" aria-label="Actor">
         <input name="reason" value="approved from Human Gate UI" aria-label="Reason">
         <button class="approve" type="submit">Approve</button>
       </form>
       <form method="post" action="/reject">
-        <input type="hidden" name="token" value="${escapeHtml(token)}">
+        <input type="hidden" name="token" value="${escapeHtml(tokenValue)}">
         <input type="hidden" name="approvalId" value="${escapeHtml(request.approvalId)}">
-        <input name="actor" value="operator" aria-label="Actor">
         <input name="reason" value="rejected from Human Gate UI" aria-label="Reason">
         <button class="reject" type="submit">Reject</button>
-      </form>` : `<p class="closed">Resolved by ${escapeHtml(request.decidedBy || "unknown")} at ${escapeHtml(request.decidedAt || "unset")}</p>`;
+      </form>` : pending ? `<p class="closed">Viewer role can inspect this request but cannot approve or reject it.</p>` : `<p class="closed">Resolved by ${escapeHtml(request.decidedBy || "unknown")} at ${escapeHtml(request.decidedAt || "unset")}</p>`;
   return `
     <article class="request status-${escapeHtml(request.status || "unknown")}">
       <header>
@@ -83,11 +124,11 @@ function renderRequestCard(request, token) {
     </article>`;
 }
 
-function renderPage(token, notice = "") {
+function renderPage(tokenValue, operator, notice = "") {
   const data = readApprovals();
   const requests = data.requests || [];
   const summary = summarize(requests);
-  const cards = requests.length ? requests.map((request) => renderRequestCard(request, token)).join("\n") : "<p class=\"empty\">No approval requests.</p>";
+  const cards = requests.length ? requests.map((request) => renderRequestCard(request, tokenValue, operator)).join("\n") : "<p class=\"empty\">No approval requests.</p>";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -130,6 +171,7 @@ function renderPage(token, notice = "") {
   <main>
     <h1>Human Gate Approval Queue</h1>
     ${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ""}
+    <p class="closed">Operator: ${escapeHtml(operator.displayName || operator.id)} (${escapeHtml(operator.role)})</p>
     <section class="summary" aria-label="Approval summary">
       <div class="metric"><strong>${summary.total}</strong><span>Total</span></div>
       <div class="metric"><strong>${summary.pending}</strong><span>Pending</span></div>
@@ -162,8 +204,8 @@ function send(response, status, body, contentType = "text/plain; charset=utf-8")
   response.end(body);
 }
 
-function redirect(response, notice) {
-  response.writeHead(303, { Location: `/?notice=${encodeURIComponent(notice)}`, "Cache-Control": "no-store" });
+function redirect(response, tokenValue, notice) {
+  response.writeHead(303, { Location: `/?token=${encodeURIComponent(tokenValue)}&notice=${encodeURIComponent(notice)}`, "Cache-Control": "no-store" });
   response.end();
 }
 
@@ -182,31 +224,68 @@ const options = parseArgs(process.argv.slice(2));
 const host = options.get("host") || "127.0.0.1";
 const port = Number(options.get("port") || 8787);
 const token = options.get("token") || crypto.randomBytes(18).toString("hex");
+const operatorConfigPath = options.get("operators") || process.env.HUMAN_GATE_OPERATORS_CONFIG || defaultOperatorsPath;
+const operators = loadOperators({ operatorConfigPath, fallbackToken: token });
+
+function tokenFromRequest(request, url, form = null) {
+  return request.headers["x-human-gate-token"] ||
+    url.searchParams.get("token") ||
+    form?.get("token") ||
+    "";
+}
+
+function authenticate(tokenValue) {
+  if (!tokenValue) return null;
+  const hash = sha256(tokenValue);
+  return operators.find((operator) => operator.tokenHash === hash) || null;
+}
 
 const server = http.createServer(async (request, response) => {
   try {
     const url = new URL(request.url || "/", `http://${request.headers.host || `${host}:${port}`}`);
+    if (request.method === "GET" && url.pathname === "/health") {
+      send(response, 200, JSON.stringify({ ok: true, operators: operators.length }, null, 2), "application/json; charset=utf-8");
+      return;
+    }
     if (request.method === "GET" && url.pathname === "/") {
-      send(response, 200, renderPage(token, url.searchParams.get("notice") || ""), "text/html; charset=utf-8");
+      const tokenValue = tokenFromRequest(request, url);
+      const operator = authenticate(tokenValue);
+      if (!operator) {
+        send(response, 401, "Unauthorized: valid operator token required");
+        return;
+      }
+      send(response, 200, renderPage(tokenValue, operator, url.searchParams.get("notice") || ""), "text/html; charset=utf-8");
       return;
     }
     if (request.method === "GET" && url.pathname === "/api/approvals") {
+      const operator = authenticate(tokenFromRequest(request, url));
+      if (!operator) {
+        send(response, 401, "Unauthorized: valid operator token required");
+        return;
+      }
       const data = readApprovals();
-      send(response, 200, JSON.stringify({ ok: true, summary: summarize(data.requests || []), requests: data.requests || [] }, null, 2), "application/json; charset=utf-8");
+      send(response, 200, JSON.stringify({ ok: true, operator: { id: operator.id, role: operator.role }, summary: summarize(data.requests || []), requests: data.requests || [] }, null, 2), "application/json; charset=utf-8");
       return;
     }
     if (request.method === "POST" && ["/approve", "/reject"].includes(url.pathname)) {
       const form = new URLSearchParams(await readBody(request));
-      if (form.get("token") !== token) {
-        send(response, 403, "Forbidden: invalid token");
+      const tokenValue = tokenFromRequest(request, url, form);
+      const operator = authenticate(tokenValue);
+      if (!operator) {
+        send(response, 401, "Unauthorized: valid operator token required");
+        return;
+      }
+      if (!canDecide(operator)) {
+        appendLog("logs/human-gate.log", `approval_ui_forbidden operator=${operator.id} role=${operator.role} path=${url.pathname}`);
+        send(response, 403, "Forbidden: operator lacks approval permission");
         return;
       }
       const approvalId = form.get("approvalId") || "";
-      const actor = form.get("actor") || process.env.USER || "human-ui";
+      const actor = operator.id;
       const reason = form.get("reason") || `${url.pathname.slice(1)} from Human Gate UI`;
       const decision = url.pathname === "/approve" ? "approved" : "rejected";
       const result = resolveApproval({ approvalId, decision, actor, reason });
-      redirect(response, result);
+      redirect(response, tokenValue, result);
       return;
     }
     send(response, 404, "Not found");
@@ -219,8 +298,8 @@ const server = http.createServer(async (request, response) => {
 server.listen(port, host, () => {
   const address = server.address();
   const actualPort = typeof address === "object" && address ? address.port : port;
-  appendLog("logs/human-gate.log", `approval_ui_started host=${host} port=${actualPort}`);
-  console.log(`HUMAN_GATE_UI_READY url=http://${host}:${actualPort} token=${token}`);
+  appendLog("logs/human-gate.log", `approval_ui_started host=${host} port=${actualPort} operators=${operators.length} operator_config=${JSON.stringify(operatorConfigPath)}`);
+  console.log(`HUMAN_GATE_UI_READY url=http://${host}:${actualPort} token=${token} operators=${operators.length} open_url=http://${host}:${actualPort}/?token=${token}`);
 });
 
 for (const signal of ["SIGINT", "SIGTERM"]) {

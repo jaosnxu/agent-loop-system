@@ -6,6 +6,8 @@ logs/codex/
 logs/mcp/*.pid
 *.pid
 config/github.local.env
+config/human-gate.operators.json
+config/human-gate.operators.local.json
 states/state_*.md
 memory/tasks/*.md
 queue/processed-events.json

@@ -1,0 +1,23 @@
+{
+  "version": "0.1.0",
+  "operators": [
+    {
+      "id": "ops-viewer",
+      "displayName": "Operations Viewer",
+      "role": "viewer",
+      "tokenEnv": "HUMAN_GATE_VIEWER_TOKEN"
+    },
+    {
+      "id": "ops-approver",
+      "displayName": "Operations Approver",
+      "role": "approver",
+      "tokenEnv": "HUMAN_GATE_APPROVER_TOKEN"
+    },
+    {
+      "id": "system-admin",
+      "displayName": "System Admin",
+      "role": "admin",
+      "tokenEnv": "HUMAN_GATE_ADMIN_TOKEN"
+    }
+  ]
+}

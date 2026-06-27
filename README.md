@@ -674,12 +674,25 @@ Start the local Human Gate approval UI:
 node scripts/human/approval_server.mjs --host=127.0.0.1 --port=8787
 ```
 
-The server prints a local URL and one-time token. The UI reads `queue/human-approvals.json` and resolves approvals through `scripts/human/resolve_approval.mjs`, so approve/reject actions still update state, logs, and cleanup paths.
+The server prints a local URL, token, and `open_url`. Without an operator config, the startup token acts as a local approver token.
+
+For operator RBAC, copy `config/human-gate.operators.example.json` to a local ignored config and provide tokens by environment variable:
+
+```bash
+export HUMAN_GATE_VIEWER_TOKEN="viewer-secret"
+export HUMAN_GATE_APPROVER_TOKEN="approver-secret"
+node scripts/human/approval_server.mjs \
+  --host=127.0.0.1 \
+  --port=8787 \
+  --operators=config/human-gate.operators.local.json
+```
+
+Viewer operators can inspect approvals. `approver` and `admin` operators can approve or reject. The UI reads `queue/human-approvals.json` and resolves approvals through `scripts/human/resolve_approval.mjs`, so approve/reject actions still update state, logs, and cleanup paths.
 
 Read approval queue JSON from the UI server:
 
 ```bash
-curl http://127.0.0.1:8787/api/approvals
+curl "http://127.0.0.1:8787/api/approvals?token=YOUR_OPERATOR_TOKEN"
 ```
 
 Approve a durable approval request by approval id:

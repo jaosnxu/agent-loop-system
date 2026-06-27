@@ -28,7 +28,8 @@ for (const role of requiredRoles) {
   if (!config.providers[providerName]) throw new Error(`providerByRole ${role} points to unknown provider: ${providerName}`);
 }
 for (const name of ["claude", "opencode", "gemini"]) {
-  if (config.providers[name].enabled === true) {
+  const provider = config.providers[name];
+  if (provider.enabled === true && provider.verified !== true) {
     throw new Error(`${name} must not be enabled until its local CLI contract is verified`);
   }
 }

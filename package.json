@@ -22,6 +22,7 @@
     "verify:mcp": "scripts/mcp/verify_mcp.sh",
     "verify:codex": "scripts/agents/verify_codex_connector.sh",
     "verify:codex-enabled": "scripts/agents/verify_codex_enabled_smoke.sh",
+    "verify:claude-provider": "scripts/agents/verify_claude_provider_smoke.sh",
     "verify:agent-result": "scripts/agents/verify_agent_result_schema.sh",
     "verify:structured-decisions": "scripts/orchestrator/verify_structured_decisions.sh",
     "verify:model-providers": "scripts/agents/verify_model_providers.sh",

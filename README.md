@@ -509,6 +509,22 @@ Fixture sources can model CI, docs, browser, or other external connector events 
 fixtures/heartbeat-sources.sample.json
 ```
 
+HTTP JSON sources can poll live connector APIs that return an event array:
+
+```json
+{
+  "id": "ci-http",
+  "type": "http-json",
+  "enabled": true,
+  "url": "https://example.invalid/agent-loop/ci-events",
+  "eventsPath": "events",
+  "filters": { "labels": ["ci"] },
+  "headersEnv": { "Authorization": "AGENT_LOOP_CI_EVENTS_AUTH" }
+}
+```
+
+Each event may include `taskId`, `title`, `priority`, `type`, `labels`, `requirement`, and `acceptance`.
+
 Run:
 
 ```bash
@@ -525,6 +541,7 @@ Verify the source registry, multi-source fixture ingestion, and dedupe:
 
 ```bash
 scripts/heartbeat/verify_source_registry.sh
+scripts/heartbeat/verify_http_sources.sh
 ```
 
 PR creation, PR update, merge, and other high-risk GitHub write actions must stop at the human gate. Verify the read checks and pending approval record with:

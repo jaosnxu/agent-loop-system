@@ -6,6 +6,33 @@
       "type": "github",
       "enabled": true,
       "configFile": "config/github-events.config.json"
+    },
+    {
+      "id": "ci-http-example",
+      "type": "http-json",
+      "enabled": false,
+      "url": "https://example.invalid/agent-loop/ci-events",
+      "eventsPath": "events",
+      "filters": { "labels": ["ci"] },
+      "headersEnv": { "Authorization": "AGENT_LOOP_CI_EVENTS_AUTH" }
+    },
+    {
+      "id": "docs-http-example",
+      "type": "http-json",
+      "enabled": false,
+      "url": "https://example.invalid/agent-loop/docs-events",
+      "eventsPath": "events",
+      "filters": { "labels": ["docs"] },
+      "headersEnv": { "Authorization": "AGENT_LOOP_DOCS_EVENTS_AUTH" }
+    },
+    {
+      "id": "browser-http-example",
+      "type": "http-json",
+      "enabled": false,
+      "url": "https://example.invalid/agent-loop/browser-events",
+      "eventsPath": "events",
+      "filters": { "labels": ["browser"] },
+      "headersEnv": { "Authorization": "AGENT_LOOP_BROWSER_EVENTS_AUTH" }
     }
   ]
 }

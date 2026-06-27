@@ -17,6 +17,7 @@
     "verify:heartbeat-status": "scripts/heartbeat/verify_status_summary.sh",
     "verify:heartbeat-metrics": "scripts/heartbeat/verify_metrics.sh",
     "verify:heartbeat-sources": "scripts/heartbeat/verify_source_registry.sh",
+    "verify:heartbeat-http-sources": "scripts/heartbeat/verify_http_sources.sh",
     "verify:spine": "node scripts/state/verify_spine.mjs",
     "verify:mcp": "scripts/mcp/verify_mcp.sh",
     "verify:codex": "scripts/agents/verify_codex_connector.sh",

@@ -1,4 +1,6 @@
 import fs from "node:fs";
+import http from "node:http";
+import https from "node:https";
 import path from "node:path";
 import { appendLog, ensureDir, systemRoot } from "../lib/common.mjs";
 import { addTask } from "../queue/queue_lib.mjs";
@@ -13,6 +15,38 @@ function readJson(relativePath, fallback = null) {
     throw new Error(`Missing JSON file: ${relativePath}`);
   }
   return JSON.parse(fs.readFileSync(full, "utf8"));
+}
+
+function fetchJson(urlString, headers = {}, timeoutMs = 10000) {
+  const url = new URL(urlString);
+  if (!["http:", "https:"].includes(url.protocol)) throw new Error(`Unsupported source protocol: ${url.protocol}`);
+  const client = url.protocol === "https:" ? https : http;
+  return new Promise((resolve, reject) => {
+    const request = client.request(url, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "User-Agent": "agent-loop-system",
+        ...headers
+      },
+      timeout: Number(timeoutMs)
+    }, (response) => {
+      let body = "";
+      response.on("data", (chunk) => body += chunk);
+      response.on("end", () => {
+        if ((response.statusCode || 0) < 200 || (response.statusCode || 0) >= 300) {
+          reject(new Error(`HTTP source ${response.statusCode}: ${body.slice(0, 200)}`));
+          return;
+        }
+        resolve(JSON.parse(body || "{}"));
+      });
+    });
+    request.on("timeout", () => {
+      request.destroy(new Error(`HTTP source timeout after ${timeoutMs}ms`));
+    });
+    request.on("error", reject);
+    request.end();
+  });
 }
 
 function readProcessed() {
@@ -46,11 +80,11 @@ function safeTaskPart(value) {
     .slice(0, 48) || "event";
 }
 
-function fixtureEventKey(source, event) {
+function eventKey(source, event) {
   return `${source.id}:${event.kind || "event"}:${event.id || event.number || event.title}`;
 }
 
-function taskFromFixtureEvent(source, event) {
+function taskFromEvent(source, event) {
   const kind = safeTaskPart(event.kind || source.id);
   const id = safeTaskPart(event.taskId || event.number || event.id || event.title);
   return {
@@ -60,31 +94,59 @@ function taskFromFixtureEvent(source, event) {
     type: event.type || source.defaultType || "example",
     prd: event.prd || "",
     scope: event.scope || `heartbeat source ${source.id}`,
-    requirement: event.requirement || `Process heartbeat event ${fixtureEventKey(source, event)}.`,
+    requirement: event.requirement || `Process heartbeat event ${eventKey(source, event)}.`,
     acceptance: event.acceptance || "The task preserves source, requirement, acceptance, and dedupe evidence.",
-    dedupeKey: event.dedupeKey || `heartbeat:${fixtureEventKey(source, event)}`,
+    dedupeKey: event.dedupeKey || `heartbeat:${eventKey(source, event)}`,
     source: `heartbeat:${source.id}`
   };
 }
 
-async function pollFixtureSource(source) {
-  const fixture = readJson(source.fixtureFile);
+function valueAtPath(payload, dotPath = "events") {
+  if (!dotPath) return payload;
+  return dotPath.split(".").reduce((value, key) => value?.[key], payload);
+}
+
+function headersForSource(source) {
+  const headers = { ...(source.headers || {}) };
+  for (const [header, envName] of Object.entries(source.headersEnv || {})) {
+    if (process.env[envName]) headers[header] = process.env[envName];
+  }
+  return headers;
+}
+
+function normalizeEvents(payload, source) {
+  const selected = Array.isArray(payload) ? payload : valueAtPath(payload, source.eventsPath || "events");
+  if (!Array.isArray(selected)) throw new Error(`Source ${source.id} did not return an events array`);
+  return selected;
+}
+
+async function queueEvents(source, events, sourceType) {
   const processed = readProcessed();
   const seen = new Set(processed.events || []);
   const created = [];
-  const events = fixture.events || [];
   for (const event of events) {
     if (!passesFilters(event, source)) continue;
-    const task = taskFromFixtureEvent(source, event);
+    const task = taskFromEvent(source, event);
     if (seen.has(task.dedupeKey)) continue;
     const result = addTask(task);
     seen.add(task.dedupeKey);
     processed.events.push(task.dedupeKey);
-    created.push({ key: task.dedupeKey, taskId: task.taskId, added: result.added, sourceId: source.id, type: source.type });
-    appendLog("logs/heartbeat.log", `heartbeat_source_event_queued source=${source.id} type=${source.type} key=${task.dedupeKey} task=${task.taskId} added=${result.added}`);
+    created.push({ key: task.dedupeKey, taskId: task.taskId, added: result.added, sourceId: source.id, type: sourceType });
+    appendLog("logs/heartbeat.log", `heartbeat_source_event_queued source=${source.id} type=${sourceType} key=${task.dedupeKey} task=${task.taskId} added=${result.added}`);
   }
   writeProcessed(processed);
   return created;
+}
+
+async function pollFixtureSource(source) {
+  const fixture = readJson(source.fixtureFile);
+  return queueEvents(source, normalizeEvents(fixture, source), "fixture");
+}
+
+async function pollHttpJsonSource(source) {
+  if (!source.url) throw new Error(`HTTP JSON source missing url: ${source.id}`);
+  const payload = await fetchJson(source.url, headersForSource(source), source.timeoutMs || 10000);
+  return queueEvents(source, normalizeEvents(payload, source), "http-json");
 }
 
 function sourceConfigPath() {
@@ -114,6 +176,12 @@ export async function pollHeartbeatSources() {
       const results = await pollFixtureSource(source);
       created.push(...results);
       appendLog("logs/heartbeat.log", `heartbeat_source_polled source=${source.id} type=fixture created=${results.length}`);
+      continue;
+    }
+    if (source.type === "http-json") {
+      const results = await pollHttpJsonSource(source);
+      created.push(...results);
+      appendLog("logs/heartbeat.log", `heartbeat_source_polled source=${source.id} type=http-json created=${results.length}`);
       continue;
     }
     appendLog("logs/heartbeat.log", `heartbeat_source_skipped source=${source.id} type=${source.type} reason=unsupported`);

@@ -513,6 +513,20 @@ PR creation, PR update, merge, and other high-risk GitHub write actions must sto
 scripts/github/verify_pr_ci_gate.sh
 ```
 
+After an approval request is approved, run merge readiness before any merge continuation:
+
+```bash
+node scripts/github/merge_readiness.mjs APPROVAL_ID task/TASK_ID main
+```
+
+The readiness gate is read-only. It verifies approval status, open PR evidence, and Actions evidence. Missing PR or missing/non-success CI blocks readiness and records the reason in task state.
+
+Verify readiness blocking behavior:
+
+```bash
+scripts/github/verify_merge_readiness.sh
+```
+
 ## Queue Operations
 
 Add task:
@@ -792,5 +806,6 @@ scripts/agents/verify_skill_drift.sh
 scripts/orchestrator/verify_structured_decisions.sh
 scripts/state/verify_artifact_hash.sh
 scripts/github/verify_pr_ci_gate.sh
+scripts/github/verify_merge_readiness.sh
 scripts/worktree/verify_cleanup_matrix.sh
 ```

@@ -148,7 +148,7 @@ export async function callTool({ role, tool, operation, target, content, command
         const req = https.request(url, { headers: { "User-Agent": "agent-loop-system", ...(token ? { Authorization: `Bearer ${token}` } : {}) } }, (res) => {
           let body = "";
           res.on("data", (chunk) => body += chunk);
-          res.on("end", () => resolve({ status: res.statusCode, authSource: source, repo, body: body.slice(0, 500) }));
+          res.on("end", () => resolve({ status: res.statusCode, authSource: source, repo, body: body.slice(0, 500), bodyText: body }));
         });
         req.on("error", reject);
         req.end();

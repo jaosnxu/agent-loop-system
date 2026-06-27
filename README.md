@@ -480,11 +480,12 @@ scripts/mcp/install_deps.sh
 
 Filesystem MCP is limited to the project directory and `../worktrees`.
 
-## GitHub Event Polling
+## Heartbeat Source Registry
 
 Configure:
 
 ```text
+config/heartbeat.sources.json
 config/github-events.config.json
 ```
 
@@ -496,10 +497,16 @@ export GITHUB_OWNER="..."
 export GITHUB_REPO="..."
 ```
 
-Without these variables, heartbeat uses:
+The default source registry enables the GitHub source. Without GitHub variables, heartbeat uses the GitHub fixture:
 
 ```text
 fixtures/github-events.sample.json
+```
+
+Fixture sources can model CI, docs, browser, or other external connector events for local verification:
+
+```text
+fixtures/heartbeat-sources.sample.json
 ```
 
 Run:
@@ -512,6 +519,12 @@ Processed GitHub event IDs are stored in:
 
 ```text
 queue/processed-events.json
+```
+
+Verify the source registry, multi-source fixture ingestion, and dedupe:
+
+```bash
+scripts/heartbeat/verify_source_registry.sh
 ```
 
 PR creation, PR update, merge, and other high-risk GitHub write actions must stop at the human gate. Verify the read checks and pending approval record with:

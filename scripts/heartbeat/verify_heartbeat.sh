@@ -38,6 +38,8 @@ if [ "$after_lines" -le "$before_lines" ]; then
   exit 1
 fi
 grep -q "heartbeat_start" logs/heartbeat.log
+grep -q "heartbeat_sources_done" logs/heartbeat.log
+grep -q "heartbeat_connector_events" logs/heartbeat.log
 grep -q "heartbeat_supervisor" logs/heartbeat.log
 grep -q "heartbeat_waiting_human task=$HUMAN_TASK_ID" logs/heartbeat.log
 grep -q "heartbeat_stale_running task=$STALE_TASK_ID" logs/heartbeat.log

@@ -48,8 +48,8 @@ function passesFilters(item, config) {
   return true;
 }
 
-export async function pollGitHubEvents() {
-  const config = readJson("config/github-events.config.json");
+export async function pollGitHubEvents(configPath = "config/github-events.config.json") {
+  const config = readJson(configPath);
   const processedPath = path.join(systemRoot, "queue/processed-events.json");
   const processed = fs.existsSync(processedPath) ? JSON.parse(fs.readFileSync(processedPath, "utf8")) : { version: "0.1.0", events: [] };
   const seen = new Set(processed.events);

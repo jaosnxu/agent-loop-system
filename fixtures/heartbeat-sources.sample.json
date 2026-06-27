@@ -1,0 +1,34 @@
+{
+  "events": [
+    {
+      "id": "ci-1001",
+      "kind": "ci",
+      "title": "CI failure: production smoke blocked",
+      "priority": "P0",
+      "type": "development",
+      "labels": ["agent-loop", "ci"],
+      "requirement": "Investigate the failing CI smoke signal and produce a fix plan before retrying.",
+      "acceptance": "The task records the failed check, root cause, next check, and required gate before continuation."
+    },
+    {
+      "id": "docs-2001",
+      "kind": "docs",
+      "title": "Docs review: LOOP operator runbook update",
+      "priority": "P2",
+      "type": "documentation",
+      "labels": ["agent-loop", "docs"],
+      "requirement": "Review the referenced runbook event and prepare the documentation update task.",
+      "acceptance": "The queued task preserves the docs source, scope, requirement, and acceptance criteria."
+    },
+    {
+      "id": "browser-3001",
+      "kind": "browser",
+      "title": "Browser test: prototype regression signal",
+      "priority": "P1",
+      "type": "prototype",
+      "labels": ["agent-loop", "browser"],
+      "requirement": "Run browser interaction checks against the prototype regression signal.",
+      "acceptance": "The testing stage produces a report with pass/fail counts and failure evidence before human approval."
+    }
+  ]
+}

@@ -5,8 +5,8 @@ import { spawnSync } from "node:child_process";
 import config from "../../config/heartbeat.config.js";
 import { appendLog, readText, systemRoot, getField, ensureDir } from "../lib/common.mjs";
 import { logToolCall } from "../lib/tool_logger.mjs";
-import { pollGitHubEvents } from "./github_events.mjs";
 import { appendHeartbeatMetric } from "./metrics_lib.mjs";
+import { pollHeartbeatSources } from "./source_registry.mjs";
 
 function runNode(script, args) {
   return spawnSync(process.execPath, [script, ...args], {
@@ -43,8 +43,8 @@ try {
     process.stderr.write(supervisor.stderr);
     process.exit(1);
   }
-  const createdEvents = await pollGitHubEvents();
-  appendLog(config.paths.logFile, `heartbeat_github_events created=${createdEvents.length}`);
+  const createdEvents = await pollHeartbeatSources();
+  appendLog(config.paths.logFile, `heartbeat_connector_events created=${createdEvents.length}`);
   const tasks = scanPendingStates();
 
   if (!tasks.length) {
@@ -55,6 +55,7 @@ try {
       result: "no_tasks",
       rulesBytes: rules.length,
       supervisorStatus: supervisor.status,
+      connectorEventsCreated: createdEvents.length,
       githubEventsCreated: createdEvents.length,
       pendingStateTasks: 0,
       dispatchedCount: 0,
@@ -95,6 +96,7 @@ try {
     result: "dispatched",
     rulesBytes: rules.length,
     supervisorStatus: supervisor.status,
+    connectorEventsCreated: createdEvents.length,
     githubEventsCreated: createdEvents.length,
     pendingStateTasks: tasks.length,
     dispatchedCount: tasks.length,

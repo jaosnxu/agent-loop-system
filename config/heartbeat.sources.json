@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "sources": [
+    {
+      "id": "github",
+      "type": "github",
+      "enabled": true,
+      "configFile": "config/github-events.config.json"
+    }
+  ]
+}

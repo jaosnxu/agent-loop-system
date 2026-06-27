@@ -74,7 +74,7 @@ export function summarizeHeartbeatMetrics(metrics) {
     return Math.max(max, numberValue(summary.no_progress_limit));
   }, 0);
   const dispatchedTotal = tickMetrics.reduce((sum, metric) => sum + numberValue(metric.dispatchedCount), 0);
-  const githubEventsTotal = tickMetrics.reduce((sum, metric) => sum + numberValue(metric.githubEventsCreated), 0);
+  const connectorEventsTotal = tickMetrics.reduce((sum, metric) => sum + numberValue(metric.connectorEventsCreated ?? metric.githubEventsCreated), 0);
   const queueRunsFailed = tickMetrics.filter((metric) => numberValue(metric.queueRunStatus) !== 0).length;
   let consecutiveNoTaskTicks = 0;
   for (let index = tickMetrics.length - 1; index >= 0; index -= 1) {
@@ -93,7 +93,8 @@ export function summarizeHeartbeatMetrics(metrics) {
     statusSummaries: statusMetrics.length,
     errors: errorMetrics.length,
     dispatchedTotal,
-    githubEventsTotal,
+    connectorEventsTotal,
+    githubEventsTotal: connectorEventsTotal,
     queueRunsFailed,
     consecutiveNoTaskTicks,
     maxWaitingHuman,

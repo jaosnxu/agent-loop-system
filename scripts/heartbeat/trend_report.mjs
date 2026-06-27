@@ -23,7 +23,7 @@ try {
     `ticks=${summary.heartbeatTicks}`,
     `errors=${summary.errors}`,
     `dispatched=${summary.dispatchedTotal}`,
-    `github_events=${summary.githubEventsTotal}`,
+    `connector_events=${summary.connectorEventsTotal}`,
     `queue_failures=${summary.queueRunsFailed}`,
     `consecutive_no_task_ticks=${summary.consecutiveNoTaskTicks}`,
     `waiting_human_max=${summary.maxWaitingHuman}`,

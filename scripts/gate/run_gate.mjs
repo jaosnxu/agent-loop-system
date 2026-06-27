@@ -15,6 +15,17 @@ function runNode(script, args) {
   });
 }
 
+function recordFailure(reason, { label, rootCause, fixPlan, nextChecks }) {
+  return runNode("scripts/state/record_failure.mjs", [
+    taskId,
+    reason,
+    `--label=${label}`,
+    `--root-cause=${rootCause}`,
+    `--fix-plan=${fixPlan}`,
+    `--next-checks=${nextChecks}`
+  ]);
+}
+
 try {
   validateTaskId(taskId);
   logToolCall({
@@ -40,7 +51,12 @@ try {
       target: taskId,
       result: "started"
     });
-    runNode("scripts/state/record_failure.mjs", [taskId, `Safety brake blocked: ${safety.stdout || safety.stderr}`]);
+    recordFailure(`Safety brake blocked: ${safety.stdout || safety.stderr}`, {
+      label: "safety_brake",
+      rootCause: `Safety brake limit was reached: ${safety.stdout || safety.stderr}`,
+      fixPlan: "Stop the current loop, inspect iteration/no-progress/budget counters, and reduce repeated work before any retry.",
+      nextChecks: "Verify task is terminated or deliberately reset by an operator before resuming."
+    });
     logToolCall({
       role: "gate",
       tool: "state",
@@ -70,7 +86,12 @@ try {
     result: skills.status === 0 ? "passed" : "blocked"
   });
   if (skills.status !== 0) {
-    runNode("scripts/state/record_failure.mjs", [taskId, `Skill check blocked: ${skills.stdout || skills.stderr}`]);
+    recordFailure(`Skill check blocked: ${skills.stdout || skills.stderr}`, {
+      label: "skill_check",
+      rootCause: `Required Skill rule files are missing or invalid: ${skills.stdout || skills.stderr}`,
+      fixPlan: "Restore the required Skill files or fix their format before rerunning any agent role.",
+      nextChecks: "Rerun skill_check and confirm every required Skill path is readable."
+    });
     appendLog("logs/gate.log", `RUN_GATE_BLOCKED_BY_SKILL_CHECK task=${taskId}`);
     process.stdout.write(skills.stdout);
     process.stderr.write(skills.stderr);
@@ -100,7 +121,12 @@ try {
       target: taskId,
       result: "started"
     });
-    runNode("scripts/state/record_failure.mjs", [taskId, `Auto check blocked: ${auto.stdout || auto.stderr}`]);
+    recordFailure(`Auto check blocked: ${auto.stdout || auto.stderr}`, {
+      label: "auto_check",
+      rootCause: `Automated syntax/format gate failed: ${auto.stdout || auto.stderr}`,
+      fixPlan: "Development Agent must inspect the auto_check output, fix the concrete syntax or format issue in the worktree, then rerun the gate.",
+      nextChecks: "Rerun auto_check and inspect logs/gate.log for RUN_GATE_PASSED."
+    });
     logToolCall({
       role: "gate",
       tool: "state",
@@ -130,7 +156,12 @@ try {
     result: acceptance.status === 0 ? "passed" : "blocked"
   });
   if (acceptance.status !== 0) {
-    runNode("scripts/state/record_failure.mjs", [taskId, `Acceptance check blocked: ${acceptance.stdout || acceptance.stderr}`]);
+    recordFailure(`Acceptance check blocked: ${acceptance.stdout || acceptance.stderr}`, {
+      label: "acceptance_check",
+      rootCause: `Acceptance gate failed against task requirement: ${acceptance.stdout || acceptance.stderr}`,
+      fixPlan: "Development Agent must update the artifact to satisfy the explicit acceptance criteria, not weaken the gate.",
+      nextChecks: "Rerun acceptance_check and verify every acceptance criterion has evidence."
+    });
     appendLog("logs/gate.log", `RUN_GATE_BLOCKED_BY_ACCEPTANCE task=${taskId}`);
     process.stdout.write(acceptance.stdout);
     process.stderr.write(acceptance.stderr);

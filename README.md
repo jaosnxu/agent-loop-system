@@ -138,6 +138,14 @@ memory/budget/TASK_ID.jsonl
 
 MCP calls and enabled model delegate calls update `Tool Call Count` and `Token Budget Used` in state, write `budget-usage/v1` rows, and sync the latest budget rows into `memory/tasks/TASK_ID.md`.
 
+Failure diagnostics:
+
+```bash
+scripts/state/verify_failure_diagnostics.sh
+```
+
+Every blocking failure writes a failure record, root cause, fix plan, next checks, retry ledger entry, structured evidence row, and synced task memory. The next loop iteration must use this evidence before retrying.
+
 Global board:
 
 ```text

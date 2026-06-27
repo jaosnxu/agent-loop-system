@@ -231,6 +231,14 @@ function runAgent(role, taskId) {
   run(process.execPath, ["scripts/state/record_action.mjs", taskId, role, "agent completed", `logs/codex/${taskId}.${role}.result.md`, "completed", "route according to DAG and gate result"], systemRoot, true);
 }
 
+function recordFailure(taskId, reason, { label = "orchestrator", rootCause = reason, fixPlan = "", nextChecks = "" } = {}) {
+  const args = ["scripts/state/record_failure.mjs", taskId, reason, `--label=${label}`];
+  if (rootCause) args.push(`--root-cause=${rootCause}`);
+  if (fixPlan) args.push(`--fix-plan=${fixPlan}`);
+  if (nextChecks) args.push(`--next-checks=${nextChecks}`);
+  run(process.execPath, args, systemRoot, true);
+}
+
 function codexResultPath(taskId, role) {
   return path.join(systemRoot, "logs/codex", `${taskId}.${role}.result.md`);
 }
@@ -520,7 +528,12 @@ function designGate(taskId) {
     appendLog("logs/gate.log", `DESIGN_GATE_CHECK task=${taskId} check=${name} result=${ok ? "pass" : "fail"}`);
   }
   if (failures.length) {
-    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, `Design gate failed: ${failures.join(", ")}`]);
+    recordFailure(taskId, `Design gate failed: ${failures.join(", ")}`, {
+      label: "design_gate",
+      rootCause: `Prototype is missing required design checks: ${failures.join(", ")}`,
+      fixPlan: "Prototyper Agent must update prototype/index.html to cover the missing requirement, acceptance, language, permission, or module checks without changing unrelated workflow structure.",
+      nextChecks: "Rerun design gate, then rerun prototype testing only after all design checks pass."
+    });
     appendLog("logs/gate.log", `DESIGN_GATE_FAILED task=${taskId} failures=${JSON.stringify(failures)}`);
     return false;
   }
@@ -574,7 +587,13 @@ function testPrototype(taskId) {
   markEvidence(taskId, `prototype test report ${report} passed=${passed} failed=${failed}`);
   run(process.execPath, ["scripts/state/record_artifact_hash.mjs", taskId, report, "test-report"], systemRoot, true);
   if (failed) {
-    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, "Prototype tests failed"]);
+    const failedCases = checks.filter(([, ok]) => !ok).map(([name]) => name);
+    recordFailure(taskId, "Prototype tests failed", {
+      label: "prototype_testing",
+      rootCause: `Prototype interaction checks failed: ${failedCases.join(", ")}`,
+      fixPlan: "Prototyper Agent must repair the failed interaction, language, permission, layout, or acceptance cases in the isolated worktree, then regenerate the test report.",
+      nextChecks: "Rerun prototype testing and inspect reports/prototype-test-report.md for zero failed cases."
+    });
     return false;
   }
   return true;
@@ -584,7 +603,12 @@ function reviewExample(taskId) {
   const reviewOutput = parseReviewOutput(taskId);
   if (reviewOutput.available && reviewOutput.passed === false) {
     run(process.execPath, ["scripts/state/record_action.mjs", taskId, "review", "block artifact", reviewOutput.resultPath, "P0/P1 or FAIL found", "return to development with root cause and fix plan"], systemRoot, true);
-    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, `Review Agent blocked: ${reviewOutput.summary}`]);
+    recordFailure(taskId, `Review Agent blocked: ${reviewOutput.summary}`, {
+      label: "review",
+      rootCause: `Review Agent found a blocking issue in ${reviewOutput.resultPath}: ${reviewOutput.summary}`,
+      fixPlan: "Development Agent must read the review result, fix each P0/P1 finding in the worktree, and avoid changing review or scoring artifacts.",
+      nextChecks: "Rerun review, confirm Review Gate passes, then continue to scoring."
+    });
     setGate(taskId, "Review Gate", "failed");
     markEvidence(taskId, `review failed by Codex output ${reviewOutput.resultPath}`);
     return false;
@@ -597,7 +621,12 @@ function reviewExample(taskId) {
   }
   const file = taskType === "changelog" ? path.join(worktreePath(taskId), "CHANGELOG.md") : path.join(worktreePath(taskId), "example-task-output.md");
   if (!fs.existsSync(file)) {
-    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, "Review Agent blocked: expected output file missing"]);
+    recordFailure(taskId, "Review Agent blocked: expected output file missing", {
+      label: "review",
+      rootCause: `Expected development artifact is missing: ${file}`,
+      fixPlan: "Development Agent must create the required output file inside the task worktree and rerun the auto gate before review.",
+      nextChecks: "Verify the expected file exists, rerun review, and confirm Review Gate passes."
+    });
     setGate(taskId, "Review Gate", "failed");
     return false;
   }
@@ -609,12 +638,22 @@ function reviewExample(taskId) {
     const required = ["7 个核心模块清单", "当前版本功能范围", "已知限制", "后续规划"];
     const missing = required.filter((item) => !text.includes(item));
     if (missing.length) {
-      run(process.execPath, ["scripts/state/record_failure.mjs", taskId, `Review Agent blocked: CHANGELOG missing ${missing.join(", ")}`]);
+      recordFailure(taskId, `Review Agent blocked: CHANGELOG missing ${missing.join(", ")}`, {
+        label: "review",
+        rootCause: `CHANGELOG.md is missing required sections: ${missing.join(", ")}`,
+        fixPlan: "Development Agent must add the missing CHANGELOG sections while preserving the release-note scope.",
+        nextChecks: "Rerun review and verify all required CHANGELOG sections are present."
+      });
       setGate(taskId, "Review Gate", "failed");
       return false;
     }
   } else if (!text.includes("Agent Loop Example") || !text.includes(taskId)) {
-    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, "Review Agent blocked: output content incomplete"]);
+    recordFailure(taskId, "Review Agent blocked: output content incomplete", {
+      label: "review",
+      rootCause: "Example output exists but does not include the required heading and task id.",
+      fixPlan: "Development Agent must update the output content to include the expected heading and current task id.",
+      nextChecks: "Rerun review and confirm output content matches acceptance."
+    });
     setGate(taskId, "Review Gate", "failed");
     return false;
   }
@@ -626,7 +665,12 @@ function reviewExample(taskId) {
 function scoreExample(taskId) {
   const scoringOutput = parseScoringOutput(taskId);
   if (scoringOutput.available && scoringOutput.passed === false) {
-    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, `Scoring Agent blocked: ${scoringOutput.summary}`]);
+    recordFailure(taskId, `Scoring Agent blocked: ${scoringOutput.summary}`, {
+      label: "scoring",
+      rootCause: `Scoring Agent rejected acceptance in ${scoringOutput.resultPath}: ${scoringOutput.summary}`,
+      fixPlan: "Development Agent must inspect the scoring criteria, close each failed acceptance item, and rerun review before scoring.",
+      nextChecks: "Rerun scoring only after review passes and each acceptance criterion is explicitly covered."
+    });
     setGate(taskId, "Score Gate", "failed");
     markEvidence(taskId, `scoring failed by structured output ${scoringOutput.resultPath}`);
     return false;
@@ -639,7 +683,12 @@ function scoreExample(taskId) {
   }
   const score = taskType === "changelog" ? 96 : 100;
   if (score < 85) {
-    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, `Score failed: ${score}`]);
+    recordFailure(taskId, `Score failed: ${score}`, {
+      label: "scoring",
+      rootCause: `Score ${score} is below the passing threshold 85.`,
+      fixPlan: "Development Agent must improve acceptance coverage before rerunning review and scoring.",
+      nextChecks: "Rerun scoring and verify score is at least 85."
+    });
     setGate(taskId, "Score Gate", "failed");
     return false;
   }

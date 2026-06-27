@@ -588,6 +588,23 @@ Verify filesystem delete continuation behavior:
 scripts/mcp/verify_filesystem_delete_continuation.sh
 ```
 
+Post-approval external notification continuation also uses dry-run first, then a second live approval:
+
+```bash
+node scripts/notifications/continue_notification.mjs APPROVAL_ID --mode=dry-run
+node scripts/notifications/continue_notification.mjs APPROVAL_ID --mode=live --webhook-url=https://example.invalid/webhook
+scripts/human/approve_approval.sh LIVE_APPROVAL_ID "approve live notification"
+node scripts/notifications/continue_notification.mjs APPROVAL_ID --mode=live --webhook-url=https://example.invalid/webhook --live-approval-id=LIVE_APPROVAL_ID --confirm-live
+```
+
+Live notification sends a JSON `POST` to the configured webhook URL only after the second approval and `--confirm-live`.
+
+Verify notification continuation behavior with a local webhook fixture:
+
+```bash
+scripts/notifications/verify_notification_continuation.sh
+```
+
 ## Queue Operations
 
 Add task:

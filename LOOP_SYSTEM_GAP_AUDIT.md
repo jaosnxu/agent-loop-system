@@ -22,7 +22,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 3. GitHub/MCP production flow is partly real: reads, approval blocking, approval resolution, read-only readiness decisions, and PR create/review/merge continuation dry-run/live-gate framework are proven. Actual live writes remain intentionally unexecuted in automated verification.
 4. Heartbeat now has supervisor classification, stale-running remediation, no-progress termination, point-in-time status summary, JSONL metrics, trend reporting, source registry, GitHub polling, CI/docs/browser fixture ingestion, and queue dispatch checks.
 5. Skill enforcement uses standard `skills/*/SKILL.md` files, records role reads with sha256 evidence, and has a Skill drift fixture.
-6. Human gate records actor, operation, reason, decision, gate id, durable approval requests, CLI approval report, local approval UI, operator RBAC, PR continuation, and filesystem delete continuation, but still needs production identity integration and broader critical-operation coverage.
+6. Human gate records actor, operation, reason, decision, gate id, durable approval requests, CLI approval report, local approval UI, operator RBAC, PR continuation, filesystem delete continuation, and notification continuation, but still needs production identity integration and broader critical-operation coverage.
 
 ## 1. Module Audit Summary
 
@@ -34,7 +34,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 | Sub-agents | B | Has role prompts, stage names, provider-aware delegate runner, Codex active provider, structured result JSON, and review/scoring decision parsing | Needs provider-specific smoke tests beyond Codex and stricter context minimization |
 | MCP connector | A- | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub/browser basics, required-Playwright mode, install/start/verify scripts, GitHub PR/CI read, write-intent human gate, merge readiness gate, and PR create/review/merge dry-run/live continuation framework | Needs live write verification in a safe staging repository |
 | State / Memory spine | B+ | Has queue, state, board, logs, resume, counters, requirement/acceptance propagation, action journal, artifact hashes, no-progress accounting | Needs token budget tied to real provider usage and richer evidence schema |
-| Human gate | A- | Has approve/reject scripts, pending_human, merge/prototype pause, durable approval queue, request-level approve/reject, report command, local approval UI, viewer/approver/admin RBAC, audit ledger, actor/reason/operation/gate id evidence, PR continuation, and filesystem delete continuation | Needs production identity provider integration and broader operation-specific execution continuations |
+| Human gate | A- | Has approve/reject scripts, pending_human, merge/prototype pause, durable approval queue, request-level approve/reject, report command, local approval UI, viewer/approver/admin RBAC, audit ledger, actor/reason/operation/gate id evidence, PR continuation, filesystem delete continuation, and notification continuation | Needs production identity provider integration and broader operation-specific execution continuations |
 
 ## 2. Heartbeat Audit
 
@@ -255,7 +255,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 - GitHub write operations such as PR creation/review/merge have a continuation framework with dry-run and second human gate, but automated verification does not execute live writes.
 - CI governance is read-only verified through Actions runs and tied to merge readiness, but actual merge continuation is not executed automatically.
-- Critical operation human gate is central, with PR continuation and filesystem delete continuation fixtures in place. External notifications and future critical operations still need operation-specific continuations.
+- Critical operation human gate is central, with PR continuation, filesystem delete continuation, and notification continuation fixtures in place. Future critical operations still need operation-specific continuations as they are added.
 
 ### Required Fixes
 
@@ -355,7 +355,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 ### What Is Missing
 
 - Approval UI has local token auth plus viewer/approver/admin RBAC; it still has no production identity provider, SSO, or remote multi-operator deployment surface.
-- Approval continuation fixtures cover task-level approve/reject, request-level approve/reject, PR/CI write intent blocking, PR create/review/merge continuation, and filesystem delete continuation, but not every future critical operation's actual execution.
+- Approval continuation fixtures cover task-level approve/reject, request-level approve/reject, PR/CI write intent blocking, PR create/review/merge continuation, filesystem delete continuation, and notification continuation, but not every future critical operation's actual execution.
 
 ### Required Fixes
 
@@ -389,7 +389,7 @@ The smallest useful repair batch is:
 
 1. Provider-specific smoke tests for non-Codex providers once those CLIs are installed and their argument contracts are verified.
 2. Safe staging-repo live verification for PR create/update, PR review, and merge.
-3. Operation-specific execution continuation fixtures for external notification and any new critical operation.
+3. Operation-specific execution continuation fixtures for any new critical operation.
 4. Structured evidence schema for gates, role outputs, root-cause analysis, and fix plans.
 5. Live heartbeat connector adapters and operational dashboard/alerts.
 

@@ -39,6 +39,7 @@
     "verify:merge-readiness": "scripts/github/verify_merge_readiness.sh",
     "verify:pr-continuation": "scripts/github/verify_pr_continuation.sh",
     "verify:filesystem-delete-continuation": "scripts/mcp/verify_filesystem_delete_continuation.sh",
+    "verify:notification-continuation": "scripts/notifications/verify_notification_continuation.sh",
     "verify:artifact-hash": "scripts/state/verify_artifact_hash.sh"
   },
   "devDependencies": {

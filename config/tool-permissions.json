@@ -10,7 +10,7 @@
     "development": {
       "filesystem": ["read", "write"],
       "shell": ["execute"],
-      "github": ["contents:write", "pull_requests:write", "pull_requests:review", "pull_requests:merge"]
+      "github": ["contents:write", "pull_requests:write", "pull_requests:review", "pull_requests:merge", "notifications:send"]
     },
     "prototyper": {
       "filesystem": ["read", "write"],

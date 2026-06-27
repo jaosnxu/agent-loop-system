@@ -22,7 +22,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 3. GitHub/MCP production flow is partly real: reads, approval blocking, approval resolution, read-only readiness decisions, and PR create/review/merge continuation dry-run/live-gate framework are proven. Actual live writes remain intentionally unexecuted in automated verification.
 4. Heartbeat now has supervisor classification, stale-running remediation, no-progress termination, point-in-time status summary, JSONL metrics, trend reporting, source registry, GitHub polling, CI/docs/browser fixture ingestion, and queue dispatch checks.
 5. Skill enforcement uses standard `skills/*/SKILL.md` files, records role reads with sha256 evidence, and has a Skill drift fixture.
-6. Human gate records actor, operation, reason, decision, gate id, durable approval requests, CLI approval report, PR continuation, and filesystem delete continuation, but still needs a richer UI and broader critical-operation coverage.
+6. Human gate records actor, operation, reason, decision, gate id, durable approval requests, CLI approval report, local approval UI, PR continuation, and filesystem delete continuation, but still needs production authentication and broader critical-operation coverage.
 
 ## 1. Module Audit Summary
 
@@ -34,7 +34,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 | Sub-agents | B | Has role prompts, stage names, provider-aware delegate runner, Codex active provider, structured result JSON, and review/scoring decision parsing | Needs provider-specific smoke tests beyond Codex and stricter context minimization |
 | MCP connector | A- | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub/browser basics, required-Playwright mode, install/start/verify scripts, GitHub PR/CI read, write-intent human gate, merge readiness gate, and PR create/review/merge dry-run/live continuation framework | Needs live write verification in a safe staging repository |
 | State / Memory spine | B+ | Has queue, state, board, logs, resume, counters, requirement/acceptance propagation, action journal, artifact hashes, no-progress accounting | Needs token budget tied to real provider usage and richer evidence schema |
-| Human gate | A- | Has approve/reject scripts, pending_human, merge/prototype pause, durable approval queue, request-level approve/reject, report command, audit ledger, actor/reason/operation/gate id evidence, PR continuation, and filesystem delete continuation | Needs UI and broader operation-specific execution continuations |
+| Human gate | A- | Has approve/reject scripts, pending_human, merge/prototype pause, durable approval queue, request-level approve/reject, report command, local approval UI, audit ledger, actor/reason/operation/gate id evidence, PR continuation, and filesystem delete continuation | Needs production auth UI and broader operation-specific execution continuations |
 
 ## 2. Heartbeat Audit
 
@@ -348,19 +348,20 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Critical MCP operations return `HUMAN_GATE_REQUIRED` instead of executing.
 - Critical MCP operations create durable pending requests in `queue/human-approvals.json`.
 - `scripts/human/list_pending.sh` and `scripts/human/report_approvals.mjs` expose pending approvals.
+- `scripts/human/approval_server.mjs` provides a local browser UI for approval review and approve/reject actions.
 - `scripts/human/approve_approval.sh` and `scripts/human/reject_approval.sh` resolve approval requests by approval id.
 - Approved requests move task state to `human_approved`; rejected requests terminate the task and clean its worktree.
 
 ### What Is Missing
 
-- Approval queue is CLI-only; no UI.
+- Approval UI is local-only with startup token; no production authentication, RBAC, or remote multi-operator audit surface yet.
 - Approval continuation fixtures cover task-level approve/reject, request-level approve/reject, PR/CI write intent blocking, PR create/review/merge continuation, and filesystem delete continuation, but not every future critical operation's actual execution.
 
 ### Required Fixes
 
 | Priority | Fix |
 |---|---|
-| P1 | Add approval queue/report UI beyond CLI commands |
+| P1 | Add production authentication/RBAC around the approval UI |
 | P1 | Expand non-bypass fixtures for each remaining critical operation type |
 
 ### Acceptance

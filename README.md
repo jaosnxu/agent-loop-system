@@ -668,6 +668,20 @@ Generate an approval report:
 node scripts/human/report_approvals.mjs
 ```
 
+Start the local Human Gate approval UI:
+
+```bash
+node scripts/human/approval_server.mjs --host=127.0.0.1 --port=8787
+```
+
+The server prints a local URL and one-time token. The UI reads `queue/human-approvals.json` and resolves approvals through `scripts/human/resolve_approval.mjs`, so approve/reject actions still update state, logs, and cleanup paths.
+
+Read approval queue JSON from the UI server:
+
+```bash
+curl http://127.0.0.1:8787/api/approvals
+```
+
 Approve a durable approval request by approval id:
 
 ```bash
@@ -693,6 +707,7 @@ Verify audit behavior:
 ```bash
 scripts/human/verify_human_gate_audit.sh
 scripts/human/verify_approval_queue.sh
+scripts/human/verify_approval_ui.sh
 ```
 
 Heartbeat metrics:

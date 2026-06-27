@@ -34,6 +34,7 @@
     "verify:cleanup-matrix": "scripts/worktree/verify_cleanup_matrix.sh",
     "verify:human-gate": "scripts/human/verify_human_gate_audit.sh",
     "verify:approval-queue": "scripts/human/verify_approval_queue.sh",
+    "verify:approval-ui": "scripts/human/verify_approval_ui.sh",
     "verify:github-pr-ci": "scripts/github/verify_pr_ci_gate.sh",
     "verify:merge-readiness": "scripts/github/verify_merge_readiness.sh",
     "verify:pr-continuation": "scripts/github/verify_pr_continuation.sh",

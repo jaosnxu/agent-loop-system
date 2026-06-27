@@ -20,7 +20,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 1. Sub-agents now have a provider-aware delegate runner, Codex active by default, structured result records, and review/scoring structured decision routing.
 2. MCP browser testing has a Playwright/static fallback runner and a required-Playwright mode; GitHub read checks, write-intent human gate, and merge readiness gate are verified.
 3. GitHub/MCP production flow is partly real: reads, approval blocking, approval resolution, read-only readiness decisions, and PR create/review/merge continuation dry-run/live-gate framework are proven. Actual live writes remain intentionally unexecuted in automated verification.
-4. Heartbeat now has supervisor classification, stale-running remediation, no-progress termination, point-in-time status summary, GitHub polling, and queue dispatch checks.
+4. Heartbeat now has supervisor classification, stale-running remediation, no-progress termination, point-in-time status summary, JSONL metrics, trend reporting, GitHub polling, and queue dispatch checks.
 5. Skill enforcement uses standard `skills/*/SKILL.md` files, records role reads with sha256 evidence, and has a Skill drift fixture.
 6. Human gate records actor, operation, reason, decision, gate id, durable approval requests, CLI approval report, PR continuation, and filesystem delete continuation, but still needs a richer UI and broader critical-operation coverage.
 
@@ -28,7 +28,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 | Module | Current Grade | Current Reality | Production Gap |
 |---|---:|---|---|
-| Heartbeat | A- | Has heartbeat rules, config, once/daemon/cron scripts, supervisor classification, stale-running remediation, no-progress termination, status summary, GitHub polling fixture/API path, queue dispatch | Needs external connector matrix beyond GitHub and long-term metrics reporting |
+| Heartbeat | A- | Has heartbeat rules, config, once/daemon/cron scripts, supervisor classification, stale-running remediation, no-progress termination, status summary, JSONL metrics, trend report, GitHub polling fixture/API path, queue dispatch | Needs external connector matrix beyond GitHub and longer operational dashboards |
 | Worktree | A- | Has create/assert/clean, branch naming, orphan fallback, cleanup matrix verification, residue monitor | Needs mandatory assert coverage on every future write integration |
 | Skill | A- | Uses standard `skills/*/SKILL.md`, role read logs, sha256 evidence, checksum verifier, and Skill drift fixture | Needs richer checksum drift reports across long-running tasks |
 | Sub-agents | B | Has role prompts, stage names, provider-aware delegate runner, Codex active provider, structured result JSON, and review/scoring decision parsing | Needs provider-specific smoke tests beyond Codex and stricter context minimization |
@@ -62,18 +62,20 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Has daemon interval mode.
 - Has cron install scripts.
 - Reports state, queue, and approval counts without changing task state.
+- Writes heartbeat/status metrics to `logs/heartbeat-metrics.jsonl`.
+- Reports trends with `scripts/heartbeat/trend_report.mjs`.
 
 ### What Is Missing
 
 - No robust external connector matrix beyond GitHub fixture/API.
-- No long-term metrics storage or trend report.
+- No dashboard or alerting surface for long-running operational metrics.
 
 ### Required Fixes
 
 | Priority | Fix |
 |---|---|
 | P1 | Add connector source registry for GitHub/CI/docs/browser queue events |
-| P1 | Add long-term heartbeat metrics storage and trend reporting |
+| P1 | Add dashboard or alerting surface for heartbeat metrics |
 
 ### Acceptance
 
@@ -81,6 +83,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Heartbeat can run without chat and dispatch one queued task.
 - Human-gated task is not resumed automatically.
 - Duplicate GitHub fixture event is ignored.
+- `scripts/heartbeat/verify_metrics.sh` passes and `trend_report.mjs` summarizes JSONL metrics.
 
 ## 3. Worktree Audit
 
@@ -372,7 +375,7 @@ Do not jump directly to business tasks. Repair in this order:
 2. Human gate continuation: add operation-specific execution continuations after request approval.
 3. GitHub governance: add safe staging-repo live verification for post-approval PR create/review/merge continuations.
 4. State evidence: convert remaining free-text evidence into stricter structured records.
-5. Heartbeat observability: add connector registry and long-term metrics summary output.
+5. Heartbeat observability: add connector registry and dashboard/alert summary output.
 6. Worktree coverage: keep adding cleanup/assert fixtures for new task types and write integrations.
 7. Approval UI: add a dashboard beyond CLI pending/report commands.
 
@@ -384,6 +387,6 @@ The smallest useful repair batch is:
 2. Safe staging-repo live verification for PR create/update, PR review, and merge.
 3. Operation-specific execution continuation fixtures for external notification and any new critical operation.
 4. Structured evidence schema for gates, role outputs, root-cause analysis, and fix plans.
-5. Heartbeat connector registry and long-term status metrics.
+5. Heartbeat connector registry and operational dashboard/alerts.
 
 After the current batch, the system is a stronger local LOOP runtime with real isolation, state, gate, and approval evidence. It still should not be called a complete production autonomous software factory until model-backed sub-agent execution and real external integrations are proven end to end.

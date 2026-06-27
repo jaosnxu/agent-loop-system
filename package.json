@@ -15,6 +15,7 @@
     "verify:requirements": "scripts/orchestrator/verify_requirement_gate.sh",
     "verify:heartbeat": "scripts/heartbeat/verify_heartbeat.sh",
     "verify:heartbeat-status": "scripts/heartbeat/verify_status_summary.sh",
+    "verify:heartbeat-metrics": "scripts/heartbeat/verify_metrics.sh",
     "verify:spine": "node scripts/state/verify_spine.mjs",
     "verify:mcp": "scripts/mcp/verify_mcp.sh",
     "verify:codex": "scripts/agents/verify_codex_connector.sh",

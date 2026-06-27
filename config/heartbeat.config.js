@@ -8,7 +8,8 @@ export default {
     heartbeatRules: "HEARTBEAT.md",
     taskBoard: "task-board.md",
     statesDir: "states",
-    logFile: "logs/heartbeat.log"
+    logFile: "logs/heartbeat.log",
+    metricsFile: "logs/heartbeat-metrics.jsonl"
   },
   safety: {
     maxIterationsPerTask: 10,

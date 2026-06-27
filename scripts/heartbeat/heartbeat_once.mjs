@@ -6,6 +6,7 @@ import config from "../../config/heartbeat.config.js";
 import { appendLog, readText, systemRoot, getField, ensureDir } from "../lib/common.mjs";
 import { logToolCall } from "../lib/tool_logger.mjs";
 import { pollGitHubEvents } from "./github_events.mjs";
+import { appendHeartbeatMetric } from "./metrics_lib.mjs";
 
 function runNode(script, args) {
   return spawnSync(process.execPath, [script, ...args], {
@@ -50,6 +51,15 @@ try {
     appendLog(config.paths.logFile, "heartbeat_noop no_pending_tasks");
     const queueResult = runNode("scripts/queue/run_next.mjs", [String(config.concurrency?.maxRunningTasks || 1)]);
     appendLog(config.paths.logFile, `heartbeat_queue_run status=${queueResult.status}`);
+    appendHeartbeatMetric("heartbeat_tick", {
+      result: "no_tasks",
+      rulesBytes: rules.length,
+      supervisorStatus: supervisor.status,
+      githubEventsCreated: createdEvents.length,
+      pendingStateTasks: 0,
+      dispatchedCount: 0,
+      queueRunStatus: queueResult.status
+    });
     console.log("HEARTBEAT_NO_TASKS");
     process.exit(0);
   }
@@ -81,9 +91,23 @@ try {
   appendLog(config.paths.logFile, `heartbeat_done dispatched=${tasks.length}`);
   const queueResult = runNode("scripts/queue/run_next.mjs", [String(config.concurrency?.maxRunningTasks || 1)]);
   appendLog(config.paths.logFile, `heartbeat_queue_run status=${queueResult.status}`);
+  appendHeartbeatMetric("heartbeat_tick", {
+    result: "dispatched",
+    rulesBytes: rules.length,
+    supervisorStatus: supervisor.status,
+    githubEventsCreated: createdEvents.length,
+    pendingStateTasks: tasks.length,
+    dispatchedCount: tasks.length,
+    queueRunStatus: queueResult.status,
+    dispatchedTasks: tasks.map((task) => task.taskId)
+  });
   console.log(`HEARTBEAT_DISPATCHED ${tasks.length}`);
 } catch (error) {
   appendLog(config.paths.logFile, `heartbeat_error error=${JSON.stringify(error.message)}`);
+  appendHeartbeatMetric("heartbeat_error", {
+    result: "error",
+    error: error.message
+  });
   console.error(`HEARTBEAT_ERROR: ${error.message}`);
   process.exit(1);
 }

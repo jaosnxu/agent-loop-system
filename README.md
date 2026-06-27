@@ -76,6 +76,12 @@ Read current heartbeat status without changing task state:
 node scripts/heartbeat/status_summary.mjs
 ```
 
+Read long-term heartbeat trend metrics:
+
+```bash
+node scripts/heartbeat/trend_report.mjs --last=200
+```
+
 Start background interval heartbeat:
 
 ```bash
@@ -126,6 +132,7 @@ Logs:
 
 ```text
 logs/heartbeat.log
+logs/heartbeat-metrics.jsonl
 logs/orchestrator.log
 logs/state.log
 logs/gate.log
@@ -673,6 +680,13 @@ Verify audit behavior:
 ```bash
 scripts/human/verify_human_gate_audit.sh
 scripts/human/verify_approval_queue.sh
+```
+
+Heartbeat metrics:
+
+```bash
+scripts/heartbeat/verify_metrics.sh
+node scripts/heartbeat/trend_report.mjs --last=200
 ```
 
 ## Prototype Tasks

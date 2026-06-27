@@ -21,7 +21,21 @@ function run(command, args, cwd) {
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if ([".git", "node_modules", "dist", "build", ".next"].includes(entry.name)) continue;
+    if (
+      [
+        ".git",
+        ".omo",
+        "node_modules",
+        "dist",
+        "build",
+        ".next",
+        "logs",
+        "states"
+      ].includes(entry.name)
+    ) {
+      continue;
+    }
+    if (dir === target && entry.name === "memory") continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(full, out);
     else out.push(full);

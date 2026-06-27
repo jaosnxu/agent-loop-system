@@ -12,8 +12,8 @@
     "development": "codex",
     "prototyper": "codex",
     "tester": "codex",
-    "review": "codex",
-    "scoring": "codex"
+    "review": "claude",
+    "scoring": "claude"
   },
   "providers": {
     "codex": {
@@ -29,10 +29,12 @@
     "claude": {
       "type": "generic-stdin",
       "command": "claude",
-      "enabled": false,
+      "enabled": true,
+      "verified": true,
       "versionArgs": ["--version"],
-      "args": [],
-      "notes": "Reserved provider slot. Enable only after local Claude CLI is installed and command args are verified."
+      "args": ["--print", "--output-format", "text", "--max-budget-usd", "0.10"],
+      "timeoutMs": 120000,
+      "notes": "Verified local provider for review/scoring. Uses Claude Code non-interactive print mode."
     },
     "opencode": {
       "type": "generic-stdin",

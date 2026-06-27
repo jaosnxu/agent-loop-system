@@ -1,7 +1,7 @@
 # LOOP System Gap Audit
 
-Status: audit draft
-Date: 2026-06-26
+Status: production governance update
+Date: 2026-06-27
 System: `/Users/xuyongwenmacbookpro/Documents/1万gstack/agent-loop-system`
 Standard: `LOOP_7_MODULES_STANDARD.md`
 
@@ -9,17 +9,17 @@ Standard: `LOOP_7_MODULES_STANDARD.md`
 
 Current status:
 
-`PARTIAL_LOOP_RUNTIME / NOT_PRODUCTION_READY`
+`PRODUCTION_GOVERNANCE_READY / BUSINESS_CONNECTORS_PENDING`
 
 Plain conclusion:
 
-The system is not fake-empty. It has a real local LOOP skeleton with heartbeat scripts, worktree scripts, Skill files, state files, queue, MCP wrapper, gates, and human approval scripts.
+The system is not fake-empty. It has a real LOOP runtime with heartbeat scripts, worktree isolation, standard Skill files, state and memory evidence, queue management, MCP wrappers, sub-agent routing, gates, and human approval scripts.
 
-But it is not yet a complete production LOOP system. The biggest gaps are:
+It is now strong enough for protected-branch development flow, but it is not a complete unattended software factory for every business system. The remaining gaps are product connector configuration, broader live-provider coverage, and operational dashboards.
 
-1. Sub-agents now have a provider-aware delegate runner, role-specific provider routing, Codex as the default configured provider, model-call timeouts, structured result records, review/scoring structured decision routing, failure diagnostics with root-cause/fix-plan/next-check evidence, a Codex-enabled read-only smoke verifier, and external provider CLI contract verification. Model delegation is still explicitly disabled for normal runs unless `AGENT_LOOP_CODEX_ENABLED=1` or config enables it.
+1. Sub-agents now have a provider-aware delegate runner, role-specific provider routing, Codex as the default configured provider, Claude enabled and smoke-verified for review/scoring, model-call timeouts, structured result records, review/scoring structured decision routing, failure diagnostics with root-cause/fix-plan/next-check evidence, a Codex-enabled read-only smoke verifier, and external provider CLI contract verification.
 2. MCP browser testing has a Playwright/static fallback runner and a required-Playwright mode; GitHub read checks, write-intent human gate, merge readiness gate, and branch-protection policy mapping are verified.
-3. GitHub/MCP production flow is partly real: reads, approval blocking, approval resolution, read-only readiness decisions, PR create/review/merge continuation dry-run/live-gate framework, opt-in live staging PR verification, and opt-in live staging branch-protection verification are proven. Live staging writes only to temporary branches and temporary PRs.
+3. GitHub/MCP production flow is real for governance: reads, approval blocking, approval resolution, read-only readiness decisions, PR create/review/merge continuation dry-run/live-gate framework, opt-in live staging PR verification, required-check workflow, and production `main` branch protection have been verified. Live staging writes only to temporary branches and temporary PRs.
 4. Heartbeat now has supervisor classification, stale-running remediation, no-progress termination, point-in-time status summary, JSONL metrics, trend reporting, source registry, GitHub polling, CI/docs/browser fixture ingestion, HTTP JSON live connector ingestion, and queue dispatch checks.
 5. Skill enforcement uses standard `skills/*/SKILL.md` files, records role reads with sha256 evidence, and has a Skill drift fixture.
 6. Human gate records actor, operation, reason, decision, gate id, durable approval requests, CLI approval report, local approval UI, operator RBAC, trusted-header identity proxy support, PR continuation, filesystem delete continuation, and notification continuation, but still needs broader critical-operation coverage.
@@ -31,8 +31,8 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 | Heartbeat | A- | Has heartbeat rules, config, once/daemon/cron scripts, supervisor classification, stale-running remediation, no-progress termination, status summary, JSONL metrics, trend report, source registry, GitHub fixture/API path, CI/docs/browser fixture sources, HTTP JSON connector sources, queue dispatch | Needs product-specific connector configs/credentials and longer operational dashboards |
 | Worktree | A- | Has create/assert/clean, branch naming, orphan fallback, cleanup matrix verification, residue monitor | Needs mandatory assert coverage on every future write integration |
 | Skill | A- | Uses standard `skills/*/SKILL.md`, role read logs, sha256 evidence, checksum verifier, and Skill drift fixture | Needs richer checksum drift reports across long-running tasks |
-| Sub-agents | A- | Has role prompts, stage names, provider-aware delegate runner, per-role provider routing, timeout-bounded model calls, Codex default provider slot, Codex-enabled read-only smoke verification, external provider CLI contract verification, structured result JSON, review/scoring decision parsing, and diagnostic-driven return-to-development evidence | Needs full task-execution smoke tests beyond Codex and stricter context minimization |
-| MCP connector | A | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub/browser basics, required-Playwright mode, install/start/verify scripts, GitHub PR/CI read, write-intent human gate, merge readiness gate, branch-protection policy mapping, PR create/review/merge dry-run/live continuation framework, and opt-in live staging write verification | Needs production branch-protection apply decision for main |
+| Sub-agents | A | Has role prompts, stage names, provider-aware delegate runner, per-role provider routing, timeout-bounded model calls, Codex default provider slot, Claude review/scoring provider, Codex-enabled read-only smoke verification, Claude review/scoring smoke verification, external provider CLI contract verification, structured result JSON, review/scoring decision parsing, and diagnostic-driven return-to-development evidence | Needs stricter context minimization and optional full task-execution smoke tests for other providers |
+| MCP connector | A | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub/browser basics, required-Playwright mode, install/start/verify scripts, GitHub PR/CI read, write-intent human gate, merge readiness gate, branch-protection policy mapping, required-check workflow, PR create/review/merge dry-run/live continuation framework, opt-in live staging write verification, and production `main` branch protection verified | Needs product-specific GitHub workflow rollout per downstream repo |
 | State / Memory spine | A- | Has queue, state, board, logs, resume, counters, requirement/acceptance propagation, action journal, artifact hashes, no-progress accounting, structured failure diagnostics, structured evidence JSONL, state/memory evidence mirrors, MCP budget usage ledger, and model-delegate budget hooks | Needs official provider token metrics when available and broader structured coverage for future direct state writers |
 | Human gate | A | Has approve/reject scripts, pending_human, merge/prototype pause, durable approval queue, request-level approve/reject, report command, local approval UI, viewer/approver/admin RBAC, trusted-header identity proxy support, audit ledger, actor/reason/operation/gate id evidence, PR continuation, filesystem delete continuation, and notification continuation | Needs broader operation-specific execution continuations |
 
@@ -189,6 +189,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - `scripts/agents/verify_agent_result_schema.sh`
 - `scripts/agents/verify_model_providers.sh`
 - `scripts/agents/verify_codex_enabled_smoke.sh`
+- `scripts/agents/verify_claude_provider_smoke.sh`
 - `scripts/state/verify_failure_diagnostics.sh`
 - `config/codex.config.json`
 - `scripts/orchestrator/run_task.mjs`
@@ -201,8 +202,9 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - `scripts/agents/codex_delegate.mjs` can invoke the active provider per role, enforce model-call timeouts, and store separate prompt/result artifacts under `logs/codex/`.
 - Each delegate run writes `logs/codex/TASK.ROLE.result.json` with `schemaVersion`, `taskId`, `role`, `provider`, `status`, `decision`, and raw result path.
 - `scripts/agents/verify_codex_enabled_smoke.sh` runs a safe read-only `triage` role through real `codex exec` and verifies prompt, raw result, structured result, state evidence, and budget usage.
+- `scripts/agents/verify_claude_provider_smoke.sh` runs review and scoring through the verified local Claude CLI path and verifies structured results, provider identity, budget evidence, and state evidence.
 - `scripts/agents/verify_provider_contracts.mjs` verifies configured CLI/version contracts for `codex`, `claude`, `opencode`, and `gemini`.
-- `config/codex.config.json` declares provider slots for `codex`, `claude`, `opencode`, and `gemini`, plus `providerByRole` so review/scoring can be routed to a different verified model provider than development; only Codex is enabled by default.
+- `config/codex.config.json` declares provider slots for `codex`, `claude`, `opencode`, and `gemini`, plus `providerByRole`; `review` and `scoring` route to verified Claude while implementation roles stay on Codex.
 - Blocking failures write root cause, fix plan, next checks, retry ledger, and structured evidence through `scripts/state/record_failure.mjs`.
 - `scripts/state/verify_failure_diagnostics.sh` verifies direct failure diagnostics and Review Agent return-to-development diagnostics.
 - Review/scoring gates exist as scripted stages and can consume delegated role outputs.
@@ -211,20 +213,21 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 ### What Is Missing
 
 - Context isolation still needs stricter role-specific context minimization.
-- Codex is the default configured provider and now has an explicit enabled smoke test. Claude/Gemini/OpenCode slots exist and their local CLI/version contracts can be verified, but they remain disabled until full task-execution contracts are approved.
+- Codex and Claude have explicit smoke tests. Gemini/OpenCode slots exist but remain disabled until their invocation contracts are approved.
 - Failure feedback now writes root cause, fix plan, and next checks to state/memory/structured evidence, but model-native failure schemas are still not enforced across every provider.
 
 ### Required Fixes
 
 | Priority | Fix |
 |---|---|
-| P1 | Add full task-execution smoke tests for Claude/OpenCode/Gemini after their invocation contracts are approved |
+| P1 | Add full task-execution smoke tests for OpenCode/Gemini after their invocation contracts are approved |
 | P1 | Enforce model-native failure schemas across every provider, not only state-level diagnostics |
 
 ### Acceptance
 
 - Development and review are separate executions.
 - `scripts/agents/verify_codex_enabled_smoke.sh` passes and proves at least one real Codex-backed sub-agent execution.
+- `scripts/agents/verify_claude_provider_smoke.sh` passes and proves review/scoring can use a second local model provider.
 - `node scripts/agents/verify_provider_contracts.mjs` passes and proves configured provider CLI/version contracts are valid.
 - `scripts/state/verify_failure_diagnostics.sh` passes and proves failure return has root cause, fix plan, next checks, and structured evidence.
 - Review cannot write files.
@@ -247,6 +250,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - `scripts/mcp/browser_test.mjs`
 - `scripts/github/verify_live_staging_pr.mjs`
 - `config/github-branch-protection.config.json`
+- `.github/workflows/required-checks.yml`
 - `scripts/github/branch_protection_policy.mjs`
 - `scripts/github/verify_branch_protection_policy.sh`
 - `logs/tool-calls.log`
@@ -265,11 +269,14 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Readonly shell blocks mutating command patterns.
 - Critical operations return `HUMAN_GATE_REQUIRED` before execution.
 - Tool calls are logged.
+- Required GitHub Actions check names exist: `lint`, `typecheck`, `test`, `build-smoke`, and `audit`.
+- Production `main` branch protection has been applied and read back from GitHub.
 
 ### What Is Missing
 
-- GitHub write operations such as PR creation/review/merge have a continuation framework with dry-run, second human gate, and opt-in live staging verification against temporary branches.
-- CI governance is read-only verified through Actions runs and tied to merge readiness; required-check policy is mapped in `config/github-branch-protection.config.json` and proven through temporary branch protection.
+- Downstream business repositories still need their own branch-protection rollout and required-check workflows.
+- GitHub write operations such as PR creation/review/merge have a continuation framework with dry-run, second human gate, and opt-in live staging verification against temporary branches; future GitHub write types still need their own continuation fixtures.
+- CI governance is tied to merge readiness, required-check policy is mapped in `config/github-branch-protection.config.json`, and production `main` protection is verified for this repository.
 - Critical operation human gate is central, with PR continuation, filesystem delete continuation, and notification continuation fixtures in place. Future critical operations still need operation-specific continuations as they are added.
 
 ### Required Fixes
@@ -277,7 +284,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 | Priority | Fix |
 |---|---|
 | P0 | Add operation-specific human-gate continuation fixtures for remaining critical operations |
-| P1 | Decide when to apply the verified branch-protection policy to production `main` |
+| P1 | Roll out equivalent required-check workflow and branch protection to each downstream business repository |
 
 ### Acceptance
 
@@ -287,6 +294,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Critical operation returns pending_human instead of executing.
 - `AGENT_LOOP_GITHUB_LIVE_STAGING=1 node scripts/github/verify_live_staging_pr.mjs` passes and proves live PR create/review/merge against temporary staging branches.
 - `scripts/github/verify_branch_protection_policy.sh` passes and proves required-check policy mapping plus temporary branch-protection apply/readback/cleanup.
+- `node scripts/github/branch_protection_policy.mjs check main` passes and proves production `main` matches the configured policy.
 
 ## 7. State / Memory Spine Audit
 
@@ -400,9 +408,9 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 Do not jump directly to business tasks. Repair in this order:
 
-1. Provider hardening: add live smoke tests for Claude/OpenCode/Gemini after local CLI contracts are verified.
+1. Provider hardening: add live smoke tests for OpenCode/Gemini after local CLI contracts are verified.
 2. Human gate continuation: add operation-specific execution continuations after request approval.
-3. GitHub governance: decide production timing for applying the verified branch-protection policy to `main`.
+3. GitHub governance: roll out required-check workflow and branch protection to downstream business repositories.
 4. State evidence: keep expanding structured evidence coverage for any newly added direct state writers.
 5. Heartbeat observability: add product-specific connector deployment configs and dashboard/alert summary output.
 6. Worktree coverage: keep adding cleanup/assert fixtures for new task types and write integrations.
@@ -412,10 +420,10 @@ Do not jump directly to business tasks. Repair in this order:
 
 The smallest useful repair batch is:
 
-1. Provider-specific smoke tests for non-Codex providers once those CLIs are installed and their argument contracts are verified.
-2. Production timing decision for applying branch-protection policy to `main`.
+1. Provider-specific smoke tests for OpenCode/Gemini once those CLIs are installed and their argument contracts are verified.
+2. Branch-protection rollout tasks for downstream business repositories.
 3. Operation-specific execution continuation fixtures for any new critical operation.
 4. Official provider token metrics ingestion when available from local model runtimes.
 5. Product-specific heartbeat connector deployment configs and operational dashboard/alerts.
 
-After the current batch, the system is a stronger local LOOP runtime with real isolation, state, gate, and approval evidence. It still should not be called a complete production autonomous software factory until model-backed sub-agent execution and real external integrations are proven end to end.
+After the current batch, the system is a protected LOOP runtime with real isolation, state, gate, approval evidence, second-model review/scoring, and GitHub governance. It still should not be called a complete unattended software factory for every business until product-specific connectors, dashboards, and downstream repository policies are deployed.

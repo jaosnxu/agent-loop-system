@@ -355,6 +355,11 @@ Current default provider:
 
 - `codex`
 
+Current production routing in this repository:
+
+- `triage`, `development`, `prototyper`, and `tester`: `codex`
+- `review` and `scoring`: `claude`
+
 Provider routing is role-specific. For example, `review` can be routed to another verified provider while `development` stays on Codex:
 
 ```json
@@ -368,16 +373,22 @@ Provider routing is role-specific. For example, `review` can be routed to anothe
 
 Do not enable a non-Codex provider until its local CLI command, arguments, timeout, and structured output contract have a passing smoke test. Review and scoring providers remain read-only through the role sandbox and MCP permissions.
 
-Reserved provider slots:
+Provider slots:
 
-- `claude`
-- `opencode`
-- `gemini`
+- `claude`: enabled and verified for review/scoring through `claude --print --output-format text`.
+- `opencode`: reserved until its local invocation contract is verified.
+- `gemini`: reserved until its local invocation contract is verified.
 
-Reserved providers stay disabled until their local CLI command and argument contract are verified on this machine. Verify provider configuration with:
+Verify provider configuration with:
 
 ```bash
 scripts/agents/verify_model_providers.sh
+```
+
+Verify the enabled Claude review/scoring smoke path with:
+
+```bash
+scripts/agents/verify_claude_provider_smoke.sh
 ```
 
 Verify local provider CLI/version contracts with:
@@ -386,7 +397,7 @@ Verify local provider CLI/version contracts with:
 node scripts/agents/verify_provider_contracts.mjs
 ```
 
-This checks the configured `codex`, `claude`, `opencode`, and `gemini` commands and version arguments. External providers stay disabled by default until their full task execution contract is explicitly enabled and tested.
+This checks the configured `codex`, `claude`, `opencode`, and `gemini` commands and version arguments. External providers must stay disabled unless their full task execution contract is explicitly enabled and tested.
 
 ## MCP Configuration
 
@@ -643,6 +654,14 @@ scripts/github/verify_merge_readiness.sh
 
 Branch protection and required-check policy are declared in `config/github-branch-protection.config.json`. The default policy targets `main`, requires the `lint`, `typecheck`, `test`, `build-smoke`, and `audit` checks, requires the branch to be up to date, requires one approving review, enforces admins, and disallows force pushes and deletions.
 
+The required GitHub Actions jobs live in `.github/workflows/required-checks.yml` and intentionally use those exact job names:
+
+- `lint`
+- `typecheck`
+- `test`
+- `build-smoke`
+- `audit`
+
 Read-only check for the configured policy:
 
 ```bash
@@ -655,10 +674,16 @@ Safe live verification writes only to a temporary branch, applies the configured
 AGENT_LOOP_GITHUB_BRANCH_PROTECTION_STAGING=1 node scripts/github/branch_protection_policy.mjs verify-staging
 ```
 
-Applying the policy to `main` is intentionally opt-in because it changes repository governance:
+Apply or re-apply the policy to `main` only when you intentionally want to change repository governance:
 
 ```bash
 AGENT_LOOP_GITHUB_APPLY_BRANCH_PROTECTION=1 node scripts/github/branch_protection_policy.mjs apply main
+```
+
+For the current `jaosnxu/agent-loop-system` repository, production `main` has already been verified with:
+
+```bash
+node scripts/github/branch_protection_policy.mjs check main
 ```
 
 Verify policy mapping, readback, staging apply, and cleanup:

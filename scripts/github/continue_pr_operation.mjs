@@ -182,9 +182,11 @@ try {
   if (!repo.owner || !repo.repo) throw new Error("GitHub repo is not configured.");
   if (!["dry-run", "live"].includes(mode)) throw new Error(`Unsupported mode: ${mode}`);
   if (!["create", "review", "merge"].includes(action)) throw new Error(`Unsupported action: ${action}`);
+  const stagingMode = process.env.AGENT_LOOP_GITHUB_STAGING_MODE === "1";
 
   const head = command.head || `task/${taskId}`;
   const baseBranch = command.base || "main";
+  const stagingBase = stagingMode && /^agent-loop-staging-base[/-]/.test(baseBranch);
   const title = command.title || `Agent Loop task ${taskId}`;
   const body = command.body || `Automated PR continuation for ${taskId}.`;
   const baseUrl = `https://api.github.com/repos/${repo.owner}/${repo.repo}`;
@@ -198,8 +200,8 @@ try {
   if (action === "review" && !existingPr && !command.prNumber) blockedReasons.push("pr_missing");
   if (action === "merge") {
     if (!existingPr && !command.prNumber) blockedReasons.push("pr_missing");
-    if (!ciRuns.length) blockedReasons.push("ci_missing");
-    else if (!successfulRun) blockedReasons.push("ci_not_successful");
+    if (!ciRuns.length && !stagingBase) blockedReasons.push("ci_missing");
+    else if (ciRuns.length && !successfulRun) blockedReasons.push("ci_not_successful");
   }
 
   const prNumber = command.prNumber || existingPr?.number || "";
@@ -219,6 +221,7 @@ try {
     `pr=${prNumber || "none"}`,
     `ci_runs=${ciRuns.length}`,
     `ci_success=${successfulRun ? "true" : "false"}`,
+    `staging_mode=${stagingBase ? "true" : "false"}`,
     `decision=${blockedReasons.length ? "blocked" : "ready"}`
   ].join(" ");
 

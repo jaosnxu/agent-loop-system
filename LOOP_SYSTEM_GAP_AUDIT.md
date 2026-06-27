@@ -19,7 +19,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 1. Sub-agents now have a provider-aware delegate runner, role-specific provider routing, Codex as the default configured provider, model-call timeouts, structured result records, review/scoring structured decision routing, failure diagnostics with root-cause/fix-plan/next-check evidence, and a Codex-enabled read-only smoke verifier. Model delegation is still explicitly disabled for normal runs unless `AGENT_LOOP_CODEX_ENABLED=1` or config enables it.
 2. MCP browser testing has a Playwright/static fallback runner and a required-Playwright mode; GitHub read checks, write-intent human gate, and merge readiness gate are verified.
-3. GitHub/MCP production flow is partly real: reads, approval blocking, approval resolution, read-only readiness decisions, and PR create/review/merge continuation dry-run/live-gate framework are proven. Actual live writes remain intentionally unexecuted in automated verification.
+3. GitHub/MCP production flow is partly real: reads, approval blocking, approval resolution, read-only readiness decisions, PR create/review/merge continuation dry-run/live-gate framework, and opt-in live staging verification are proven. Live staging writes only to temporary branches and a temporary PR.
 4. Heartbeat now has supervisor classification, stale-running remediation, no-progress termination, point-in-time status summary, JSONL metrics, trend reporting, source registry, GitHub polling, CI/docs/browser fixture ingestion, HTTP JSON live connector ingestion, and queue dispatch checks.
 5. Skill enforcement uses standard `skills/*/SKILL.md` files, records role reads with sha256 evidence, and has a Skill drift fixture.
 6. Human gate records actor, operation, reason, decision, gate id, durable approval requests, CLI approval report, local approval UI, operator RBAC, PR continuation, filesystem delete continuation, and notification continuation, but still needs production identity integration and broader critical-operation coverage.
@@ -32,7 +32,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 | Worktree | A- | Has create/assert/clean, branch naming, orphan fallback, cleanup matrix verification, residue monitor | Needs mandatory assert coverage on every future write integration |
 | Skill | A- | Uses standard `skills/*/SKILL.md`, role read logs, sha256 evidence, checksum verifier, and Skill drift fixture | Needs richer checksum drift reports across long-running tasks |
 | Sub-agents | A- | Has role prompts, stage names, provider-aware delegate runner, per-role provider routing, timeout-bounded model calls, Codex default provider slot, Codex-enabled read-only smoke verification, structured result JSON, review/scoring decision parsing, and diagnostic-driven return-to-development evidence | Needs provider-specific smoke tests beyond Codex and stricter context minimization |
-| MCP connector | A- | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub/browser basics, required-Playwright mode, install/start/verify scripts, GitHub PR/CI read, write-intent human gate, merge readiness gate, and PR create/review/merge dry-run/live continuation framework | Needs live write verification in a safe staging repository |
+| MCP connector | A | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub/browser basics, required-Playwright mode, install/start/verify scripts, GitHub PR/CI read, write-intent human gate, merge readiness gate, PR create/review/merge dry-run/live continuation framework, and opt-in live staging write verification | Needs branch protection and required-check policy mapping |
 | State / Memory spine | A- | Has queue, state, board, logs, resume, counters, requirement/acceptance propagation, action journal, artifact hashes, no-progress accounting, structured failure diagnostics, structured evidence JSONL, state/memory evidence mirrors, MCP budget usage ledger, and model-delegate budget hooks | Needs official provider token metrics when available and broader structured coverage for future direct state writers |
 | Human gate | A- | Has approve/reject scripts, pending_human, merge/prototype pause, durable approval queue, request-level approve/reject, report command, local approval UI, viewer/approver/admin RBAC, audit ledger, actor/reason/operation/gate id evidence, PR continuation, filesystem delete continuation, and notification continuation | Needs production identity provider integration and broader operation-specific execution continuations |
 
@@ -243,6 +243,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - `scripts/mcp/mcp_tool.mjs`
 - `scripts/mcp/shell_server.mjs`
 - `scripts/mcp/browser_test.mjs`
+- `scripts/github/verify_live_staging_pr.mjs`
 - `logs/tool-calls.log`
 - `logs/mcp-filesystem.log`
 - `logs/mcp-shell.log`
@@ -262,7 +263,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 ### What Is Missing
 
-- GitHub write operations such as PR creation/review/merge have a continuation framework with dry-run and second human gate, but automated verification does not execute live writes.
+- GitHub write operations such as PR creation/review/merge have a continuation framework with dry-run, second human gate, and opt-in live staging verification against temporary branches.
 - CI governance is read-only verified through Actions runs and tied to merge readiness, but actual merge continuation is not executed automatically.
 - Critical operation human gate is central, with PR continuation, filesystem delete continuation, and notification continuation fixtures in place. Future critical operations still need operation-specific continuations as they are added.
 
@@ -271,7 +272,6 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 | Priority | Fix |
 |---|---|
 | P0 | Add operation-specific human-gate continuation fixtures for remaining critical operations |
-| P1 | Add safe staging-repo live verification for PR create, PR review, and merge continuations |
 | P1 | Add branch protection and required-check policy mapping |
 
 ### Acceptance
@@ -280,6 +280,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Review role write is blocked.
 - Shell readonly cannot mutate files.
 - Critical operation returns pending_human instead of executing.
+- `AGENT_LOOP_GITHUB_LIVE_STAGING=1 node scripts/github/verify_live_staging_pr.mjs` passes and proves live PR create/review/merge against temporary staging branches.
 
 ## 7. State / Memory Spine Audit
 
@@ -395,7 +396,7 @@ Do not jump directly to business tasks. Repair in this order:
 
 1. Provider hardening: add live smoke tests for Claude/OpenCode/Gemini after local CLI contracts are verified.
 2. Human gate continuation: add operation-specific execution continuations after request approval.
-3. GitHub governance: add safe staging-repo live verification for post-approval PR create/review/merge continuations.
+3. GitHub governance: add branch protection and required-check policy mapping.
 4. State evidence: keep expanding structured evidence coverage for any newly added direct state writers.
 5. Heartbeat observability: add product-specific connector deployment configs and dashboard/alert summary output.
 6. Worktree coverage: keep adding cleanup/assert fixtures for new task types and write integrations.
@@ -406,7 +407,7 @@ Do not jump directly to business tasks. Repair in this order:
 The smallest useful repair batch is:
 
 1. Provider-specific smoke tests for non-Codex providers once those CLIs are installed and their argument contracts are verified.
-2. Safe staging-repo live verification for PR create/update, PR review, and merge.
+2. Branch protection and required-check policy mapping.
 3. Operation-specific execution continuation fixtures for any new critical operation.
 4. Official provider token metrics ingestion when available from local model runtimes.
 5. Product-specific heartbeat connector deployment configs and operational dashboard/alerts.

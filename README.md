@@ -533,6 +533,12 @@ scripts/mcp/verify_mcp.sh
 
 This verifies filesystem read/write inside a real temporary worktree, review write denial, shell execute, readonly shell denial, critical human-gate blocking, browser test entry, GitHub token status, and read-only GitHub repo/pulls/commits/actions-runs connectivity when a repository is configured.
 
+Live GitHub staging verification is intentionally opt-in because it writes to GitHub. It creates temporary staging branches, opens a temporary PR, runs the second human gate, submits a review/comment, merges into the temporary base branch, and deletes the temporary branches. It never targets `main`.
+
+```bash
+AGENT_LOOP_GITHUB_LIVE_STAGING=1 node scripts/github/verify_live_staging_pr.mjs
+```
+
 Browser testing uses Playwright when installed. If Playwright is not installed, the browser test runner reports `static_fallback` mode instead of pretending that a real browser ran. Final prototype or UI acceptance should call browser testing with `--require-playwright` or payload `{"requirePlaywright":true}` so static fallback cannot pass as final UI evidence.
 
 Install MCP dependencies:

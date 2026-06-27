@@ -14,6 +14,7 @@
     "verify:brake": "scripts/orchestrator/verify_safety_brake.sh",
     "verify:requirements": "scripts/orchestrator/verify_requirement_gate.sh",
     "verify:heartbeat": "scripts/heartbeat/verify_heartbeat.sh",
+    "verify:heartbeat-status": "scripts/heartbeat/verify_status_summary.sh",
     "verify:spine": "node scripts/state/verify_spine.mjs",
     "verify:mcp": "scripts/mcp/verify_mcp.sh",
     "verify:codex": "scripts/agents/verify_codex_connector.sh",
@@ -30,6 +31,7 @@
     "verify:worktree-residue": "scripts/worktree/monitor_residue.sh",
     "verify:cleanup-matrix": "scripts/worktree/verify_cleanup_matrix.sh",
     "verify:human-gate": "scripts/human/verify_human_gate_audit.sh",
+    "verify:approval-queue": "scripts/human/verify_approval_queue.sh",
     "verify:github-pr-ci": "scripts/github/verify_pr_ci_gate.sh",
     "verify:artifact-hash": "scripts/state/verify_artifact_hash.sh"
   },

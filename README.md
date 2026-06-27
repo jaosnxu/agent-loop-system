@@ -70,6 +70,12 @@ Run one heartbeat tick:
 node scripts/heartbeat/heartbeat_once.mjs
 ```
 
+Read current heartbeat status without changing task state:
+
+```bash
+node scripts/heartbeat/status_summary.mjs
+```
+
 Start background interval heartbeat:
 
 ```bash
@@ -587,6 +593,20 @@ Generate an approval report:
 node scripts/human/report_approvals.mjs
 ```
 
+Approve a durable approval request by approval id:
+
+```bash
+scripts/human/approve_approval.sh APPROVAL_ID "reason"
+```
+
+Reject a durable approval request by approval id:
+
+```bash
+scripts/human/reject_approval.sh APPROVAL_ID "reason"
+```
+
+Approving a request changes the task stage from `pending_human` to `human_approved` and records the decision. Rejecting a request terminates the task and cleans its worktree.
+
 Audit log:
 
 ```text
@@ -597,6 +617,7 @@ Verify audit behavior:
 
 ```bash
 scripts/human/verify_human_gate_audit.sh
+scripts/human/verify_approval_queue.sh
 ```
 
 ## Prototype Tasks
@@ -762,9 +783,11 @@ These commands check the repaired LOOP requirements chain:
 ```bash
 scripts/orchestrator/verify_requirement_gate.sh
 scripts/heartbeat/verify_heartbeat.sh
+scripts/heartbeat/verify_status_summary.sh
 node scripts/state/verify_spine.mjs
 scripts/mcp/verify_mcp.sh
 scripts/human/list_pending.sh
+scripts/human/verify_approval_queue.sh
 scripts/agents/verify_skill_drift.sh
 scripts/orchestrator/verify_structured_decisions.sh
 scripts/state/verify_artifact_hash.sh

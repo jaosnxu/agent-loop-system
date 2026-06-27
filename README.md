@@ -551,6 +551,23 @@ Verify continuation dry-run and second-gate behavior:
 scripts/github/verify_pr_continuation.sh
 ```
 
+Post-approval filesystem delete continuation also uses dry-run first, then a second live approval:
+
+```bash
+node scripts/mcp/continue_filesystem_delete.mjs APPROVAL_ID --mode=dry-run
+node scripts/mcp/continue_filesystem_delete.mjs APPROVAL_ID --mode=live
+scripts/human/approve_approval.sh LIVE_APPROVAL_ID "approve live filesystem delete"
+node scripts/mcp/continue_filesystem_delete.mjs APPROVAL_ID --mode=live --live-approval-id=LIVE_APPROVAL_ID --confirm-live
+```
+
+The delete target must be inside the matching `../worktrees/TASK_ID/` directory. Main workspace, system paths, and symlink-resolved escapes are blocked.
+
+Verify filesystem delete continuation behavior:
+
+```bash
+scripts/mcp/verify_filesystem_delete_continuation.sh
+```
+
 ## Queue Operations
 
 Add task:

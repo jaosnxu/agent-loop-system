@@ -4,14 +4,25 @@
   "command": "codex",
   "model": "",
   "approvalPolicy": "never",
+  "timeoutMs": 300000,
   "promptMaxChars": 24000,
   "outputDir": "logs/codex",
+  "providerByRole": {
+    "triage": "codex",
+    "development": "codex",
+    "prototyper": "codex",
+    "tester": "codex",
+    "review": "codex",
+    "scoring": "codex"
+  },
   "providers": {
     "codex": {
       "type": "codex-exec",
       "command": "codex",
       "enabled": true,
       "model": "",
+      "args": ["--ephemeral", "--ignore-rules"],
+      "timeoutMs": 300000,
       "notes": "Default local provider. Uses `codex exec` with role sandboxing."
     },
     "claude": {

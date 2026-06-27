@@ -347,6 +347,19 @@ Current default provider:
 
 - `codex`
 
+Provider routing is role-specific. For example, `review` can be routed to another verified provider while `development` stays on Codex:
+
+```json
+{
+  "providerByRole": {
+    "development": "codex",
+    "review": "claude"
+  }
+}
+```
+
+Do not enable a non-Codex provider until its local CLI command, arguments, timeout, and structured output contract have a passing smoke test. Review and scoring providers remain read-only through the role sandbox and MCP permissions.
+
 Reserved provider slots:
 
 - `claude`
@@ -458,6 +471,20 @@ Verify the connector without running a model:
 
 ```bash
 scripts/agents/verify_codex_connector.sh
+```
+
+Verify a real Codex-enabled role execution:
+
+```bash
+scripts/agents/verify_codex_enabled_smoke.sh
+```
+
+This runs a safe read-only `triage` task through `codex exec`, then checks the prompt artifact, raw result, structured result JSON, state evidence, and budget ledger. It is the smoke test for proving that the sub-agent path is not only packaging prompts.
+
+Model calls have a timeout. Override for one run when needed:
+
+```bash
+AGENT_LOOP_CODEX_TIMEOUT_MS=120000 scripts/agents/verify_codex_enabled_smoke.sh
 ```
 
 Each role writes a structured result record:

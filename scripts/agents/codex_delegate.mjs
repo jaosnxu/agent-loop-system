@@ -19,8 +19,13 @@ function codexEnabled(config) {
   return config.enabled === true;
 }
 
-function activeProvider(config) {
-  const name = process.env.AGENT_LOOP_PROVIDER || config.activeProvider || "codex";
+function roleProviderOverride(role) {
+  const key = `AGENT_LOOP_PROVIDER_${role.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
+  return process.env[key];
+}
+
+function activeProvider(config, role) {
+  const name = roleProviderOverride(role) || process.env.AGENT_LOOP_PROVIDER || config.providerByRole?.[role] || config.activeProvider || "codex";
   const provider = config.providers?.[name] || {
     type: "codex-exec",
     command: config.command || "codex",
@@ -28,6 +33,13 @@ function activeProvider(config) {
     model: config.model || ""
   };
   return { name, provider };
+}
+
+function providerTimeoutMs(config, provider) {
+  const raw = process.env.AGENT_LOOP_CODEX_TIMEOUT_MS || provider.timeoutMs || config.timeoutMs || 300000;
+  const timeoutMs = Number(raw);
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return undefined;
+  return timeoutMs;
 }
 
 function worktreePath(taskId) {
@@ -44,8 +56,8 @@ function trimPrompt(text, maxChars) {
   return `${text.slice(0, maxChars)}\n\n[TRUNCATED_BY_AGENT_LOOP_SYSTEM]\n`;
 }
 
-function buildPrompt(stateText, promptText) {
-  return [
+function buildPrompt(stateText, promptText, { role, taskId }) {
+  const parts = [
     promptText,
     "",
     "## Loop Task State",
@@ -57,7 +69,20 @@ function buildPrompt(stateText, promptText) {
     "- For write roles, only modify files inside the task worktree.",
     "- For read-only roles, do not modify files.",
     "- End with a concise result summary and any blockers."
-  ].join("\n");
+  ];
+  if (process.env.AGENT_LOOP_CODEX_SMOKE === "1") {
+    parts.push(
+      "",
+      "## Smoke Mode Contract",
+      "- This is a connector smoke test, not a product task.",
+      "- Do not call tools.",
+      "- Do not modify files.",
+      "- Return only the YAML role result for this task.",
+      `- task_id must be ${taskId}.`,
+      `- role must be ${role}.`
+    );
+  }
+  return parts.join("\n");
 }
 
 function runProvider({ config, providerName, provider, taskId, role, prompt, resultOut }) {
@@ -66,16 +91,19 @@ function runProvider({ config, providerName, provider, taskId, role, prompt, res
   }
   const command = provider.command || config.command || "codex";
   const sandbox = config.sandboxByRole?.[role] || "read-only";
+  const timeout = providerTimeoutMs(config, provider);
+  const spawnOptions = { cwd: systemRoot, input: prompt, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"], timeout, killSignal: "SIGTERM" };
   if (provider.type === "codex-exec") {
     const args = ["exec", "-C", executionCwd(taskId), "-s", sandbox, "-o", resultOut];
     const model = provider.model || config.model;
     if (model) args.push("-m", model);
+    if (Array.isArray(provider.args)) args.push(...provider.args);
     args.push("-");
-    return spawnSync(command, args, { cwd: systemRoot, input: prompt, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+    return spawnSync(command, args, spawnOptions);
   }
   if (provider.type === "generic-stdin") {
     const args = provider.args || [];
-    const result = spawnSync(command, args, { cwd: executionCwd(taskId), input: prompt, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+    const result = spawnSync(command, args, { ...spawnOptions, cwd: executionCwd(taskId) });
     if (result.status === 0) {
       fs.writeFileSync(resultOut, result.stdout || "");
     }
@@ -129,7 +157,7 @@ function recordCodexResult(taskId, role, providerName, promptOut, resultOut, sta
   writeState(taskId, text);
   syncBoard();
   spawnSync(process.execPath, ["scripts/memory/sync_task_memory.mjs", taskId], { cwd: systemRoot, encoding: "utf8" });
-  if (status === "completed") {
+  if (["completed", "failed", "timeout"].includes(status)) {
     const promptText = fs.existsSync(promptOut) ? fs.readFileSync(promptOut, "utf8") : "";
     const rawText = fs.existsSync(resultOut) ? fs.readFileSync(resultOut, "utf8") : "";
     recordBudgetUsage({
@@ -156,13 +184,13 @@ try {
   const promptPath = path.join(systemRoot, promptFile);
   if (!fs.existsSync(promptPath)) throw new Error(`Missing prompt file: ${promptFile}`);
 
-  const prompt = trimPrompt(buildPrompt(stateText, fs.readFileSync(promptPath, "utf8")), Number(config.promptMaxChars || 24000));
+  const prompt = trimPrompt(buildPrompt(stateText, fs.readFileSync(promptPath, "utf8"), { role, taskId }), Number(config.promptMaxChars || 24000));
   const outDir = path.join(systemRoot, config.outputDir || "logs/codex");
   ensureDir(outDir);
   const promptOut = path.join(outDir, `${taskId}.${role}.prompt.md`);
   const resultOut = path.join(outDir, `${taskId}.${role}.result.md`);
   fs.writeFileSync(promptOut, prompt);
-  const { name: providerName, provider } = activeProvider(config);
+  const { name: providerName, provider } = activeProvider(config, role);
 
   if (!codexEnabled(config)) {
     appendLog("logs/orchestrator.log", `codex_delegate_disabled role=${role} task=${taskId} prompt=${promptOut}`);
@@ -176,7 +204,21 @@ try {
   appendLog("logs/orchestrator.log", `codex_delegate role=${role} task=${taskId} provider=${providerName} status=${result.status} cwd=${executionCwd(taskId)}`);
   if (result.stdout.trim()) appendLog("logs/orchestrator.log", `codex_stdout ${JSON.stringify(result.stdout.slice(0, 800))}`);
   if (result.stderr.trim()) appendLog("logs/orchestrator.log", `codex_stderr ${JSON.stringify(result.stderr.slice(0, 800))}`);
-  if (result.status !== 0) throw new Error(`Codex delegate failed role=${role} status=${result.status}: ${result.stderr || result.stdout}`);
+  if (result.error || result.status !== 0) {
+    const status = result.error?.code === "ETIMEDOUT" ? "timeout" : "failed";
+    const statusCode = typeof result.status === "number" ? result.status : 1;
+    const failureText = [
+      result.error ? `error=${result.error.message}` : "",
+      result.signal ? `signal=${result.signal}` : "",
+      result.stderr || "",
+      result.stdout || ""
+    ].filter(Boolean).join("\n").slice(0, 4000);
+    if (!fs.existsSync(resultOut) || !fs.readFileSync(resultOut, "utf8").trim()) {
+      fs.writeFileSync(resultOut, `${failureText || "CODEX_DELEGATE_FAILED"}\n`);
+    }
+    recordCodexResult(taskId, role, providerName, promptOut, resultOut, status, statusCode);
+    throw new Error(`Codex delegate ${status} role=${role} status=${result.status ?? "unset"} signal=${result.signal || "none"}: ${result.stderr || result.stdout || result.error?.message || "no output"}`);
+  }
 
   recordCodexResult(taskId, role, providerName, promptOut, resultOut, "completed", result.status);
   console.log(`CODEX_DELEGATE_OK role=${role} task=${taskId} result=${resultOut}`);

@@ -1,0 +1,25 @@
+{
+  "version": "0.1.0",
+  "mode": "trusted-header",
+  "sharedSecretEnv": "HUMAN_GATE_IDENTITY_SHARED_SECRET",
+  "secretHeader": "x-agent-loop-identity-secret",
+  "userHeader": "x-auth-request-user",
+  "emailHeader": "x-auth-request-email",
+  "groupsHeader": "x-auth-request-groups",
+  "groupSeparator": ",",
+  "defaultRole": "viewer",
+  "roleMappings": [
+    {
+      "role": "admin",
+      "groups": ["agent-loop-admins"]
+    },
+    {
+      "role": "approver",
+      "groups": ["agent-loop-approvers"]
+    },
+    {
+      "role": "viewer",
+      "groups": ["agent-loop-viewers"]
+    }
+  ]
+}

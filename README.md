@@ -380,6 +380,14 @@ Reserved providers stay disabled until their local CLI command and argument cont
 scripts/agents/verify_model_providers.sh
 ```
 
+Verify local provider CLI/version contracts with:
+
+```bash
+node scripts/agents/verify_provider_contracts.mjs
+```
+
+This checks the configured `codex`, `claude`, `opencode`, and `gemini` commands and version arguments. External providers stay disabled by default until their full task execution contract is explicitly enabled and tested.
+
 ## MCP Configuration
 
 Templates:
@@ -633,6 +641,32 @@ Verify readiness blocking behavior:
 scripts/github/verify_merge_readiness.sh
 ```
 
+Branch protection and required-check policy are declared in `config/github-branch-protection.config.json`. The default policy targets `main`, requires the `lint`, `typecheck`, `test`, `build-smoke`, and `audit` checks, requires the branch to be up to date, requires one approving review, enforces admins, and disallows force pushes and deletions.
+
+Read-only check for the configured policy:
+
+```bash
+node scripts/github/branch_protection_policy.mjs check main
+```
+
+Safe live verification writes only to a temporary branch, applies the configured protection, reads it back, removes the protection, and deletes the temporary branch:
+
+```bash
+AGENT_LOOP_GITHUB_BRANCH_PROTECTION_STAGING=1 node scripts/github/branch_protection_policy.mjs verify-staging
+```
+
+Applying the policy to `main` is intentionally opt-in because it changes repository governance:
+
+```bash
+AGENT_LOOP_GITHUB_APPLY_BRANCH_PROTECTION=1 node scripts/github/branch_protection_policy.mjs apply main
+```
+
+Verify policy mapping, readback, staging apply, and cleanup:
+
+```bash
+scripts/github/verify_branch_protection_policy.sh
+```
+
 Run post-approval PR continuation in dry-run mode:
 
 ```bash
@@ -791,6 +825,22 @@ node scripts/human/approval_server.mjs \
 ```
 
 Viewer operators can inspect approvals. `approver` and `admin` operators can approve or reject. The UI reads `queue/human-approvals.json` and resolves approvals through `scripts/human/resolve_approval.mjs`, so approve/reject actions still update state, logs, and cleanup paths.
+
+For production identity, place the UI behind an identity-aware reverse proxy or OIDC gateway and copy `config/human-gate.identity.example.json` to a local ignored config. The server accepts trusted identity headers only when the configured shared secret header is present. Group or email mappings decide whether the authenticated user is `viewer`, `approver`, or `admin`.
+
+```bash
+export HUMAN_GATE_IDENTITY_SHARED_SECRET="shared-secret-from-proxy"
+node scripts/human/approval_server.mjs \
+  --host=127.0.0.1 \
+  --port=8787 \
+  --identity=config/human-gate.identity.local.json
+```
+
+Verify trusted-header identity mapping and RBAC:
+
+```bash
+scripts/human/verify_approval_identity.sh
+```
 
 Read approval queue JSON from the UI server:
 

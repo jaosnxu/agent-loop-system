@@ -8,6 +8,7 @@ import { appendLog, ensureDir, systemRoot } from "../lib/common.mjs";
 
 const approvalsPath = path.join(systemRoot, "queue/human-approvals.json");
 const defaultOperatorsPath = "config/human-gate.operators.json";
+const defaultIdentityPath = "config/human-gate.identity.json";
 
 function parseArgs(args) {
   const options = new Map();
@@ -61,6 +62,54 @@ function loadOperators({ operatorConfigPath, fallbackToken }) {
     });
   }
   return operators;
+}
+
+function headerValue(request, name) {
+  return request.headers[String(name || "").toLowerCase()] || "";
+}
+
+function loadIdentityConfig(identityConfigPath) {
+  const config = readJsonIfExists(identityConfigPath);
+  if (!config) return null;
+  if (config.mode !== "trusted-header") {
+    throw new Error(`Unsupported identity mode: ${config.mode}`);
+  }
+  const sharedSecretEnv = config.sharedSecretEnv || "HUMAN_GATE_IDENTITY_SHARED_SECRET";
+  const expectedSecret = process.env[sharedSecretEnv] || "";
+  if (!expectedSecret) {
+    throw new Error(`Identity config requires environment secret: ${sharedSecretEnv}`);
+  }
+  return {
+    mode: config.mode,
+    expectedSecret,
+    secretHeader: config.secretHeader || "x-agent-loop-identity-secret",
+    userHeader: config.userHeader || "x-auth-request-user",
+    emailHeader: config.emailHeader || "x-auth-request-email",
+    groupsHeader: config.groupsHeader || "x-auth-request-groups",
+    groupSeparator: config.groupSeparator || ",",
+    defaultRole: config.defaultRole || "viewer",
+    roleMappings: Array.isArray(config.roleMappings) ? config.roleMappings : [],
+    source: identityConfigPath
+  };
+}
+
+function groupsFromHeader(value, separator) {
+  return String(value || "")
+    .split(separator)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function roleFromIdentity(identityConfig, { email, groups }) {
+  const groupSet = new Set(groups);
+  for (const mapping of identityConfig.roleMappings) {
+    const mappingGroups = Array.isArray(mapping.groups) ? mapping.groups : [];
+    const mappingEmails = Array.isArray(mapping.emails) ? mapping.emails : [];
+    if (mappingGroups.some((group) => groupSet.has(group)) || mappingEmails.includes(email)) {
+      return mapping.role || identityConfig.defaultRole;
+    }
+  }
+  return identityConfig.defaultRole;
 }
 
 function canDecide(operator) {
@@ -205,7 +254,8 @@ function send(response, status, body, contentType = "text/plain; charset=utf-8")
 }
 
 function redirect(response, tokenValue, notice) {
-  response.writeHead(303, { Location: `/?token=${encodeURIComponent(tokenValue)}&notice=${encodeURIComponent(notice)}`, "Cache-Control": "no-store" });
+  const tokenPart = tokenValue ? `token=${encodeURIComponent(tokenValue)}&` : "";
+  response.writeHead(303, { Location: `/?${tokenPart}notice=${encodeURIComponent(notice)}`, "Cache-Control": "no-store" });
   response.end();
 }
 
@@ -225,7 +275,9 @@ const host = options.get("host") || "127.0.0.1";
 const port = Number(options.get("port") || 8787);
 const token = options.get("token") || crypto.randomBytes(18).toString("hex");
 const operatorConfigPath = options.get("operators") || process.env.HUMAN_GATE_OPERATORS_CONFIG || defaultOperatorsPath;
+const identityConfigPath = options.get("identity") || process.env.HUMAN_GATE_IDENTITY_CONFIG || defaultIdentityPath;
 const operators = loadOperators({ operatorConfigPath, fallbackToken: token });
+const identityConfig = loadIdentityConfig(identityConfigPath);
 
 function tokenFromRequest(request, url, form = null) {
   return request.headers["x-human-gate-token"] ||
@@ -234,22 +286,46 @@ function tokenFromRequest(request, url, form = null) {
     "";
 }
 
-function authenticate(tokenValue) {
+function authenticateToken(tokenValue) {
   if (!tokenValue) return null;
   const hash = sha256(tokenValue);
   return operators.find((operator) => operator.tokenHash === hash) || null;
+}
+
+function authenticateIdentity(request) {
+  if (!identityConfig) return null;
+  const providedSecret = headerValue(request, identityConfig.secretHeader);
+  if (!providedSecret || providedSecret !== identityConfig.expectedSecret) return null;
+  const user = headerValue(request, identityConfig.userHeader);
+  const email = headerValue(request, identityConfig.emailHeader);
+  const groups = groupsFromHeader(headerValue(request, identityConfig.groupsHeader), identityConfig.groupSeparator);
+  const id = user || email;
+  if (!id) return null;
+  const role = roleFromIdentity(identityConfig, { email, groups });
+  return {
+    id,
+    displayName: email ? `${id} <${email}>` : id,
+    role,
+    tokenHash: "",
+    source: "trusted-header",
+    identity: { email, groups }
+  };
+}
+
+function authenticateRequest(request, url, form = null) {
+  return authenticateIdentity(request) || authenticateToken(tokenFromRequest(request, url, form));
 }
 
 const server = http.createServer(async (request, response) => {
   try {
     const url = new URL(request.url || "/", `http://${request.headers.host || `${host}:${port}`}`);
     if (request.method === "GET" && url.pathname === "/health") {
-      send(response, 200, JSON.stringify({ ok: true, operators: operators.length }, null, 2), "application/json; charset=utf-8");
+      send(response, 200, JSON.stringify({ ok: true, operators: operators.length, identity: identityConfig ? { mode: identityConfig.mode, source: identityConfig.source } : null }, null, 2), "application/json; charset=utf-8");
       return;
     }
     if (request.method === "GET" && url.pathname === "/") {
       const tokenValue = tokenFromRequest(request, url);
-      const operator = authenticate(tokenValue);
+      const operator = authenticateRequest(request, url);
       if (!operator) {
         send(response, 401, "Unauthorized: valid operator token required");
         return;
@@ -258,7 +334,7 @@ const server = http.createServer(async (request, response) => {
       return;
     }
     if (request.method === "GET" && url.pathname === "/api/approvals") {
-      const operator = authenticate(tokenFromRequest(request, url));
+      const operator = authenticateRequest(request, url);
       if (!operator) {
         send(response, 401, "Unauthorized: valid operator token required");
         return;
@@ -270,7 +346,7 @@ const server = http.createServer(async (request, response) => {
     if (request.method === "POST" && ["/approve", "/reject"].includes(url.pathname)) {
       const form = new URLSearchParams(await readBody(request));
       const tokenValue = tokenFromRequest(request, url, form);
-      const operator = authenticate(tokenValue);
+      const operator = authenticateRequest(request, url, form);
       if (!operator) {
         send(response, 401, "Unauthorized: valid operator token required");
         return;
@@ -298,8 +374,8 @@ const server = http.createServer(async (request, response) => {
 server.listen(port, host, () => {
   const address = server.address();
   const actualPort = typeof address === "object" && address ? address.port : port;
-  appendLog("logs/human-gate.log", `approval_ui_started host=${host} port=${actualPort} operators=${operators.length} operator_config=${JSON.stringify(operatorConfigPath)}`);
-  console.log(`HUMAN_GATE_UI_READY url=http://${host}:${actualPort} token=${token} operators=${operators.length} open_url=http://${host}:${actualPort}/?token=${token}`);
+  appendLog("logs/human-gate.log", `approval_ui_started host=${host} port=${actualPort} operators=${operators.length} operator_config=${JSON.stringify(operatorConfigPath)} identity=${identityConfig ? JSON.stringify(identityConfig.source) : "none"}`);
+  console.log(`HUMAN_GATE_UI_READY url=http://${host}:${actualPort} token=${token} operators=${operators.length} identity=${identityConfig ? "trusted-header" : "none"} open_url=http://${host}:${actualPort}/?token=${token}`);
 });
 
 for (const signal of ["SIGINT", "SIGTERM"]) {

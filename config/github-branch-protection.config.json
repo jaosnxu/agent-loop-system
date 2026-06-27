@@ -1,0 +1,14 @@
+{
+  "version": "0.1.0",
+  "branch": "main",
+  "requiredChecks": ["lint", "typecheck", "test", "build-smoke", "audit"],
+  "requireBranchesUpToDate": true,
+  "requiredApprovingReviewCount": 1,
+  "dismissStaleReviews": true,
+  "requireCodeOwnerReviews": false,
+  "requireLastPushApproval": false,
+  "requiredConversationResolution": true,
+  "enforceAdmins": true,
+  "allowForcePushes": false,
+  "allowDeletions": false
+}

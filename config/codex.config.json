@@ -20,6 +20,7 @@
       "type": "codex-exec",
       "command": "codex",
       "enabled": true,
+      "versionArgs": ["--version"],
       "model": "",
       "args": ["--ephemeral", "--ignore-rules"],
       "timeoutMs": 300000,
@@ -29,6 +30,7 @@
       "type": "generic-stdin",
       "command": "claude",
       "enabled": false,
+      "versionArgs": ["--version"],
       "args": [],
       "notes": "Reserved provider slot. Enable only after local Claude CLI is installed and command args are verified."
     },
@@ -36,6 +38,7 @@
       "type": "generic-stdin",
       "command": "opencode",
       "enabled": false,
+      "versionArgs": ["--version"],
       "args": [],
       "notes": "Reserved provider slot. Enable only after local OpenCode CLI is installed and command args are verified."
     },
@@ -43,6 +46,7 @@
       "type": "generic-stdin",
       "command": "gemini",
       "enabled": false,
+      "versionArgs": ["--version"],
       "args": [],
       "notes": "Reserved provider slot. Enable only after local Gemini CLI is installed and command args are verified."
     }

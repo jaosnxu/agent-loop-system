@@ -7,7 +7,8 @@ cd "$ROOT"
 TASK_ID="heartbeat-verify"
 HUMAN_TASK_ID="heartbeat-human-verify"
 STALE_TASK_ID="heartbeat-stale-verify"
-rm -f "states/state_${TASK_ID}.md" "states/state_${HUMAN_TASK_ID}.md" "states/state_${STALE_TASK_ID}.md"
+NO_PROGRESS_TASK_ID="heartbeat-no-progress-verify"
+rm -f "states/state_${TASK_ID}.md" "states/state_${HUMAN_TASK_ID}.md" "states/state_${STALE_TASK_ID}.md" "states/state_${NO_PROGRESS_TASK_ID}.md"
 scripts/worktree/clean_worktree.sh "$TASK_ID" >/dev/null 2>&1 || true
 
 before_lines=0
@@ -18,6 +19,9 @@ node scripts/state/create_state.mjs "$HUMAN_TASK_ID" "Heartbeat human gate verif
 node scripts/human/record_gate.mjs "$HUMAN_TASK_ID" pending "verify_human_pause" "heartbeat-verify" "heartbeat must not bypass human gate" >/tmp/heartbeat-human-pending.out
 node scripts/state/create_state.mjs "$STALE_TASK_ID" "Heartbeat stale verify" --priority=P1 --type=example --requirement="Stale running task must be detected." --acceptance="Heartbeat supervisor logs stale running without unsafe continuation." >/tmp/heartbeat-stale-create.out
 node scripts/state/update_stage.mjs "$STALE_TASK_ID" running "simulate stale running" >/dev/null
+node scripts/state/create_state.mjs "$NO_PROGRESS_TASK_ID" "Heartbeat no-progress verify" --priority=P1 --type=example --requirement="No-progress task must be terminated." --acceptance="Heartbeat supervisor terminates tasks at no-progress limit." >/tmp/heartbeat-no-progress-create.out
+node scripts/state/update_stage.mjs "$NO_PROGRESS_TASK_ID" development "simulate no progress" >/dev/null
+node scripts/state/set_counter.mjs "$NO_PROGRESS_TASK_ID" "No Progress Count" 3 >/dev/null
 node - <<'NODE'
 const fs = require("fs");
 const file = "states/state_heartbeat-stale-verify.md";
@@ -37,9 +41,13 @@ grep -q "heartbeat_start" logs/heartbeat.log
 grep -q "heartbeat_supervisor" logs/heartbeat.log
 grep -q "heartbeat_waiting_human task=$HUMAN_TASK_ID" logs/heartbeat.log
 grep -q "heartbeat_stale_running task=$STALE_TASK_ID" logs/heartbeat.log
+grep -q "heartbeat_remediated_stale task=$STALE_TASK_ID" logs/heartbeat.log
+grep -q "heartbeat_no_progress_limit task=$NO_PROGRESS_TASK_ID" logs/heartbeat.log
+grep -q "heartbeat_remediated_no_progress task=$NO_PROGRESS_TASK_ID" logs/heartbeat.log
 grep -q "Current Stage: pending_human" "states/state_${HUMAN_TASK_ID}.md"
+grep -q "Current Stage: terminated" "states/state_${NO_PROGRESS_TASK_ID}.md"
 
-rm -f "states/state_${TASK_ID}.md" "states/state_${HUMAN_TASK_ID}.md" "states/state_${STALE_TASK_ID}.md"
+rm -f "states/state_${TASK_ID}.md" "states/state_${HUMAN_TASK_ID}.md" "states/state_${STALE_TASK_ID}.md" "states/state_${NO_PROGRESS_TASK_ID}.md"
 scripts/worktree/clean_worktree.sh "$TASK_ID" >/dev/null 2>&1 || true
 node scripts/state/sync_board.mjs >/dev/null
 

@@ -22,6 +22,10 @@ function isCritical(tool, operation) {
 }
 
 function taskIdFromTarget(target = "") {
+  try {
+    const parsed = JSON.parse(target);
+    if (parsed.taskId) return parsed.taskId;
+  } catch {}
   const resolved = path.resolve(target || systemRoot);
   if (resolved.startsWith(worktreesRoot)) {
     const relative = path.relative(worktreesRoot, resolved);
@@ -35,7 +39,8 @@ function requestApproval({ role, tool, operation, target, command }) {
   ensureDir(path.dirname(approvalsPath));
   const approvals = fs.existsSync(approvalsPath) ? JSON.parse(fs.readFileSync(approvalsPath, "utf8")) : { version: "0.1.0", requests: [] };
   const approvalId = `approval-${Date.now()}`;
-  const taskId = taskIdFromTarget(target || command || "");
+  let taskId = taskIdFromTarget(command || "");
+  if (taskId === "unbound") taskId = taskIdFromTarget(target || "");
   const request = {
     approvalId,
     taskId,

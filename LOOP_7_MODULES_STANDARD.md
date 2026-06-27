@@ -1,8 +1,8 @@
 # LOOP 7 Modules Standard
 
-Status: standard draft  
-Date: 2026-06-26  
-Scope: Heartbeat, Worktree, Skill, Sub-agents, MCP connector, State / Memory spine, Human gate  
+Status: standard draft
+Date: 2026-06-26
+Scope: Heartbeat, Worktree, Skill, Sub-agents, MCP connector, State / Memory spine, Human gate
 
 This document defines the target standard for a production-grade LOOP system. It is not an implementation report. It is the standard used to audit and repair `agent-loop-system`.
 

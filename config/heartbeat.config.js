@@ -20,6 +20,9 @@ export default {
     maxRunningTasks: 1
   },
   supervisor: {
-    staleRunningMinutes: 60
+    staleRunningMinutes: 60,
+    remediateStaleRunning: true,
+    staleRunningStage: "returned_to_development",
+    terminateNoProgressAtLimit: true
   }
 };

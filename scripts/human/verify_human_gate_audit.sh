@@ -24,6 +24,8 @@ grep -q "gate_id=human-" "states/state_$TASK_ID.md"
 grep -q "task=$TASK_ID" logs/human-gate.log
 scripts/human/list_pending.sh >/tmp/human-gate-list.out
 grep -q "PENDING_HUMAN task=$TASK_ID" /tmp/human-gate-list.out
+node scripts/human/report_approvals.mjs /tmp/human-approval-report.md >/tmp/human-approval-report.out
+grep -q "Human Approval Report" /tmp/human-approval-report.out
 
 HUMAN_GATE_ACTOR=verifier scripts/human/reject_task.sh "$TASK_ID" "smoke rejection" >/tmp/human-gate-reject.out
 grep -q "TASK_REJECTED $TASK_ID" /tmp/human-gate-reject.out

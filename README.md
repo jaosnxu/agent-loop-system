@@ -48,7 +48,7 @@ The example runs:
 Temporary worktree path:
 
 ```text
-/Users/xuyongwenmacbookpro/Documents/worktrees/example-smoke
+/Users/xuyongwenmacbookpro/Documents/1万gstack/worktrees/example-smoke
 ```
 
 It is removed automatically when the task completes.
@@ -190,6 +190,30 @@ Human gate audit:
 scripts/human/verify_human_gate_audit.sh
 ```
 
+GitHub PR/CI human gate:
+
+```bash
+scripts/github/verify_pr_ci_gate.sh
+```
+
+Artifact hash and no-progress accounting:
+
+```bash
+scripts/state/verify_artifact_hash.sh
+```
+
+Cleanup matrix:
+
+```bash
+scripts/worktree/verify_cleanup_matrix.sh
+```
+
+Skill drift fixture:
+
+```bash
+scripts/agents/verify_skill_drift.sh
+```
+
 ## Worktree Scripts
 
 Create isolated worktree:
@@ -246,6 +270,12 @@ Each agent run records bytes and sha256 checksums for the mandatory prompt and S
 
 ```bash
 scripts/agents/verify_skill_checksums.sh
+```
+
+Verify that changed Skill content is read by the next role run:
+
+```bash
+scripts/agents/verify_skill_drift.sh
 ```
 
 ## Agent Prompts
@@ -401,6 +431,12 @@ Verify the schema:
 scripts/agents/verify_agent_result_schema.sh
 ```
 
+Verify that review/scoring decisions are consumed from structured role results:
+
+```bash
+scripts/orchestrator/verify_structured_decisions.sh
+```
+
 Start MCP services:
 
 ```bash
@@ -465,6 +501,12 @@ Processed GitHub event IDs are stored in:
 queue/processed-events.json
 ```
 
+PR creation, PR update, merge, and other high-risk GitHub write actions must stop at the human gate. Verify the read checks and pending approval record with:
+
+```bash
+scripts/github/verify_pr_ci_gate.sh
+```
+
 ## Queue Operations
 
 Add task:
@@ -526,6 +568,24 @@ scripts/human/reject_task.sh TASK_ID "reason"
 ```
 
 Human gate decisions are recorded in state files and logs.
+
+Durable pending requests are stored in:
+
+```text
+queue/human-approvals.json
+```
+
+List pending approvals:
+
+```bash
+scripts/human/list_pending.sh
+```
+
+Generate an approval report:
+
+```bash
+node scripts/human/report_approvals.mjs
+```
 
 Audit log:
 
@@ -612,6 +672,18 @@ MAX_ITERATIONS=3 node scripts/gate/safety_brake.mjs TASK_ID
 
 If a brake triggers, the task is marked `terminated`, and worktree cleanup runs.
 
+Repeated identical artifact hashes increase `No Progress Count`. Verify this behavior with:
+
+```bash
+scripts/state/verify_artifact_hash.sh
+```
+
+Verify cleanup after review failure, safety brake, changelog rejection, and prototype rejection:
+
+```bash
+scripts/worktree/verify_cleanup_matrix.sh
+```
+
 ## Troubleshooting
 
 ### Script has no execute permission
@@ -693,4 +765,9 @@ scripts/heartbeat/verify_heartbeat.sh
 node scripts/state/verify_spine.mjs
 scripts/mcp/verify_mcp.sh
 scripts/human/list_pending.sh
+scripts/agents/verify_skill_drift.sh
+scripts/orchestrator/verify_structured_decisions.sh
+scripts/state/verify_artifact_hash.sh
+scripts/github/verify_pr_ci_gate.sh
+scripts/worktree/verify_cleanup_matrix.sh
 ```

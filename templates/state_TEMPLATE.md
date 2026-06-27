@@ -47,6 +47,10 @@
 
 - None
 
+## Artifact Hashes
+
+- None
+
 ## Next Action
 
 - Triage Agent must classify and route this task.

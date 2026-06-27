@@ -35,6 +35,7 @@
     }
   },
   "criticalOperationsRequireHumanGate": [
+    "github:pull_requests:write",
     "github:pull_requests:merge",
     "filesystem:delete",
     "shell:destructive",

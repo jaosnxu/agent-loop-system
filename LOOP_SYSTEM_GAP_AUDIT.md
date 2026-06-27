@@ -1,9 +1,9 @@
 # LOOP System Gap Audit
 
-Status: audit draft  
-Date: 2026-06-26  
-System: `/Users/xuyongwenmacbookpro/Documents/1万gstack/agent-loop-system`  
-Standard: `LOOP_7_MODULES_STANDARD.md`  
+Status: audit draft
+Date: 2026-06-26
+System: `/Users/xuyongwenmacbookpro/Documents/1万gstack/agent-loop-system`
+Standard: `LOOP_7_MODULES_STANDARD.md`
 
 ## 0. Gate Conclusion
 
@@ -17,24 +17,24 @@ The system is not fake-empty. It has a real local LOOP skeleton with heartbeat s
 
 But it is not yet a complete production LOOP system. The biggest gaps are:
 
-1. Sub-agents now have a provider-aware delegate runner, Codex active by default, and structured result records, but role result parsing still needs stronger production hardening.
-2. MCP browser testing has a Playwright/static fallback runner and a required-Playwright mode, but GitHub write/CI governance still needs hardening.
-3. GitHub/MCP production flow is only partly real.
-4. Heartbeat now has supervisor classification, but recovery policy is still conservative.
-5. Skill enforcement now uses standard `skills/*/SKILL.md` files and records role reads with sha256 evidence.
-6. Human gate now records actor, operation, reason, decision, and gate id, but still needs a richer approval queue UI.
+1. Sub-agents now have a provider-aware delegate runner, Codex active by default, structured result records, and review/scoring structured decision routing.
+2. MCP browser testing has a Playwright/static fallback runner and a required-Playwright mode; GitHub read checks and write-intent human gate are verified.
+3. GitHub/MCP production flow is partly real: reads and approval blocking are proven, while approval continuation for every write operation still needs more fixtures.
+4. Heartbeat now has supervisor classification, stale-running remediation, no-progress termination, GitHub polling, and queue dispatch checks.
+5. Skill enforcement uses standard `skills/*/SKILL.md` files, records role reads with sha256 evidence, and has a Skill drift fixture.
+6. Human gate records actor, operation, reason, decision, gate id, durable approval requests, and a CLI approval report, but still needs a richer UI.
 
 ## 1. Module Audit Summary
 
 | Module | Current Grade | Current Reality | Production Gap |
 |---|---:|---|---|
-| Heartbeat | B | Has heartbeat rules, config, once/daemon/cron scripts, supervisor classification, GitHub polling fixture/API path, queue dispatch | Needs stronger recovery policy, external connector matrix, and no-progress remediation |
-| Worktree | B+ | Has create/assert/clean, branch naming, orphan fallback, cleanup, matrix verification, residue monitor | Needs mandatory assert coverage on every future write integration |
-| Skill | B+ | Uses standard `skills/*/SKILL.md` files, agent prompts, role read logs, and sha256 evidence | Needs stronger changed-Skill behavior fixture and checksum drift reporting |
-| Sub-agents | B- | Has role prompts, stage names, provider-aware delegate runner, Codex active provider, and structured result JSON | Needs provider-specific smoke tests beyond Codex and stronger review/test/score parsing |
-| MCP connector | B | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub/browser basics, required-Playwright mode, install/start/verify scripts | Needs stronger GitHub write/PR/CI governance and approval continuation fixtures |
-| State / Memory spine | B | Has queue, state, board, logs, resume, counters, requirement/acceptance propagation | Needs stronger no-progress accounting, queue-board-state consistency checks, richer evidence schema, artifact links |
-| Human gate | B | Has approve/reject scripts, pending_human, merge/prototype pause, audit ledger, actor/reason/operation/gate id evidence | Needs richer approval queue/report UI and broader non-bypass fixture matrix |
+| Heartbeat | B+ | Has heartbeat rules, config, once/daemon/cron scripts, supervisor classification, stale-running remediation, no-progress termination, GitHub polling fixture/API path, queue dispatch | Needs external connector matrix beyond GitHub and richer metrics reporting |
+| Worktree | A- | Has create/assert/clean, branch naming, orphan fallback, cleanup matrix verification, residue monitor | Needs mandatory assert coverage on every future write integration |
+| Skill | A- | Uses standard `skills/*/SKILL.md`, role read logs, sha256 evidence, checksum verifier, and Skill drift fixture | Needs richer checksum drift reports across long-running tasks |
+| Sub-agents | B | Has role prompts, stage names, provider-aware delegate runner, Codex active provider, structured result JSON, and review/scoring decision parsing | Needs provider-specific smoke tests beyond Codex and stricter context minimization |
+| MCP connector | B+ | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub/browser basics, required-Playwright mode, install/start/verify scripts, GitHub PR/CI read plus write-intent human gate | Needs approval continuation fixtures for every write operation |
+| State / Memory spine | B+ | Has queue, state, board, logs, resume, counters, requirement/acceptance propagation, action journal, artifact hashes, no-progress accounting | Needs token budget tied to real provider usage and richer evidence schema |
+| Human gate | B+ | Has approve/reject scripts, pending_human, merge/prototype pause, durable approval queue, report command, audit ledger, actor/reason/operation/gate id evidence | Needs UI and broader continuation fixtures |
 
 ## 2. Heartbeat Audit
 
@@ -63,9 +63,6 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 ### What Is Missing
 
-- No full supervisor model: it does not deeply classify stuck/running/pending_human/failed tasks.
-- No heartbeat-specific regression script that proves no-op, queue dispatch, GitHub dedupe, and human gate skip in one command.
-- No clear stale-running detection.
 - No robust external connector matrix beyond GitHub fixture/API.
 - No heartbeat metrics summary.
 
@@ -73,8 +70,6 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 | Priority | Fix |
 |---|---|
-| P0 | Add `scripts/heartbeat/verify_heartbeat.sh` covering no-op, queued task dispatch, GitHub fixture dedupe, and pending_human skip |
-| P0 | Add stale task detection and log `heartbeat_stale_running` without unsafe continuation |
 | P1 | Add connector source registry for GitHub/CI/docs/browser queue events |
 | P1 | Add heartbeat status summary command |
 
@@ -108,14 +103,14 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 ### What Is Missing
 
 - Not every future write integration is guaranteed to call the same assertion path.
-- Cleanup is called in orchestrator catch paths, but needs a broader failure matrix over every task type.
+- Cleanup matrix now covers review failure, safety brake, changelog rejection, and prototype rejection. Future write integrations still need to be added to this matrix.
 
 ### Required Fixes
 
 | Priority | Fix |
 |---|---|
 | P0 | Keep all new write paths routed through MCP filesystem write or `assert_worktree.sh` |
-| P1 | Expand cleanup verification across prototype, changelog, failed review, safety brake, and rejection |
+| P1 | Keep expanding cleanup verification when new task types or write integrations are added |
 
 ### Acceptance
 
@@ -155,15 +150,13 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 ### What Is Missing
 
-- No dedicated fixture proving a changed Skill changes subsequent task behavior.
-- No checksum drift comparison report across task iterations.
+- Checksum drift is recorded per role run; long-running aggregate reporting is still basic.
 
 ### Required Fixes
 
 | Priority | Fix |
 |---|---|
-| P1 | Add a fixture proving changed Skill content is read on the next role run |
-| P1 | Include Skill checksum drift comparison in task memory evidence |
+| P1 | Add richer checksum drift summary across long-running task iterations |
 
 ### Acceptance
 
@@ -209,7 +202,6 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 | Priority | Fix |
 |---|---|
-| P0 | Make review and scoring consume structured result JSON plus gate output and acceptance |
 | P1 | Add provider-specific smoke tests for Claude/OpenCode/Gemini after their local CLIs are installed |
 | P1 | Strengthen retry loop so root cause, fix plan, and next checks are parsed from each failed role result |
 
@@ -298,10 +290,12 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Board sync exists.
 - Safety brake checks counters.
 - Gate logs acceptance checks.
+- `scripts/state/record_artifact_hash.mjs` records file/directory hashes in state and memory.
+- Repeated unchanged artifact hashes increment `No Progress Count`.
+- `scripts/state/verify_artifact_hash.sh` verifies changed vs unchanged output accounting.
 
 ### What Is Missing
 
-- No-progress count is not deeply calculated from artifact diffs or repeated failure signatures.
 - Evidence is free text, not structured.
 - Queue-state-board consistency has no standalone verifier.
 - Token budget is recorded but not connected to actual model/provider usage.
@@ -313,7 +307,6 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 |---|---|
 | P0 | Add `scripts/state/verify_spine.mjs` checking queue/state/board/log consistency |
 | P0 | Add structured evidence format for artifact path, gate, role, result |
-| P1 | Implement real no-progress detection based on repeated failure and unchanged artifact hash |
 | P1 | Connect token/tool budget to real provider/tool usage |
 
 ### Acceptance
@@ -345,18 +338,18 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Pending, approved, and rejected decisions record actor, operation, reason, decision, and gate id.
 - Human gate audit is written to state, memory, and `logs/human-gate.log`.
 - Critical MCP operations return `HUMAN_GATE_REQUIRED` instead of executing.
+- Critical MCP operations create durable pending requests in `queue/human-approvals.json`.
+- `scripts/human/list_pending.sh` and `scripts/human/report_approvals.mjs` expose pending approvals.
 
 ### What Is Missing
 
 - Approval queue is CLI-only; no UI.
-- Approval continuation fixtures cover changelog/rejection but not every future critical operation.
-- Critical MCP operations are blocked centrally, but do not yet create a durable approval request record automatically for every operation.
+- Approval continuation fixtures cover changelog/rejection and PR/CI write intent blocking, but not every future critical operation.
 
 ### Required Fixes
 
 | Priority | Fix |
 |---|---|
-| P0 | Convert every MCP critical operation block into a durable approval request |
 | P1 | Add approval queue/report UI beyond `list_pending.sh` |
 | P1 | Expand non-bypass fixtures for each critical operation type |
 
@@ -371,24 +364,22 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 
 Do not jump directly to business tasks. Repair in this order:
 
-1. Sub-agents: make review/scoring consume structured result JSON and gate evidence.
-2. GitHub: add PR create/update/CI decision flow behind human gate.
-3. Heartbeat: add recovery policy for stale running and repeated no-progress tasks.
-4. Human gate: add approval queue/report UI and fixtures for each critical operation type.
-5. State: add artifact hash drift and no-progress detection based on unchanged outputs.
-6. Worktree: expand cleanup verification across every task type and failure branch.
-7. Skill: add changed-Skill behavior fixture and checksum drift comparison.
+1. Provider hardening: add live smoke tests for Claude/OpenCode/Gemini after local CLI contracts are verified.
+2. Human gate continuation: add approval continuation fixtures for each future high-risk operation type.
+3. GitHub governance: tie PR/CI read evidence to merge readiness policy after approval.
+4. State evidence: convert remaining free-text evidence into stricter structured records.
+5. Heartbeat observability: add connector registry and metrics summary output.
+6. Worktree coverage: keep adding cleanup/assert fixtures for new task types and write integrations.
+7. Approval UI: add a dashboard beyond CLI pending/report commands.
 
 ## 10. Minimum Next Repair Batch
 
 The smallest useful repair batch is:
 
-1. Structured review/scoring parser over `logs/codex/TASK.ROLE.result.json`.
-2. GitHub PR create and CI read flow that stops at human approval before merge.
-3. Stale task remediation policy in heartbeat supervisor.
-4. Human approval report for `queue/human-approvals.json`.
-5. Artifact hash and no-progress verifier.
-6. Cleanup matrix for prototype, changelog, review failure, safety brake, and rejection.
-7. Changed-Skill behavior smoke test.
+1. Provider-specific smoke tests for non-Codex providers once those CLIs are installed and their argument contracts are verified.
+2. Operation-specific approval continuation fixtures for PR create/update, PR review, merge, file delete, and external notification.
+3. Merge readiness gate that combines human approval, PR review state, and CI conclusion.
+4. Structured evidence schema for gates, role outputs, root-cause analysis, and fix plans.
+5. Heartbeat connector registry and status metrics.
 
-After those exist and pass, the system can be called a stronger local LOOP runtime. It still should not be called a complete production autonomous software factory until model-backed sub-agent execution and real external integrations are proven.
+After the current batch, the system is a stronger local LOOP runtime with real isolation, state, gate, and approval evidence. It still should not be called a complete production autonomous software factory until model-backed sub-agent execution and real external integrations are proven end to end.

@@ -221,6 +221,10 @@ function safety(taskId) {
 }
 
 function runAgent(role, taskId) {
+  if (options.get(`skip-${role}`) === "true") {
+    run(process.execPath, ["scripts/state/record_action.mjs", taskId, "orchestrator", `skip ${role} agent`, `logs/codex/${taskId}.${role}.result.json`, "skipped by explicit option", "parse existing structured result artifact"], systemRoot, true);
+    return;
+  }
   run(process.execPath, ["scripts/state/record_action.mjs", taskId, "orchestrator", `start ${role} agent`, `states/state_${taskId}.md`, "started", `${role} must read role prompt, Skill files, task state, and write result evidence`], systemRoot, true);
   const result = run(process.execPath, ["scripts/agents/run_agent.mjs", role, taskId], systemRoot, true);
   if (result.status !== 0) throw new Error(result.stderr || result.stdout);
@@ -231,7 +235,31 @@ function codexResultPath(taskId, role) {
   return path.join(systemRoot, "logs/codex", `${taskId}.${role}.result.md`);
 }
 
+function codexResultJsonPath(taskId, role) {
+  return path.join(systemRoot, "logs/codex", `${taskId}.${role}.result.json`);
+}
+
+function parseAgentResult(taskId, role) {
+  const resultPath = codexResultJsonPath(taskId, role);
+  if (!fs.existsSync(resultPath)) return { available: false, resultPath };
+  try {
+    const result = JSON.parse(fs.readFileSync(resultPath, "utf8"));
+    if (result.schemaVersion !== "agent-result/v1") {
+      return { available: true, valid: false, resultPath, summary: "invalid schemaVersion" };
+    }
+    return { available: true, valid: true, resultPath, ...result };
+  } catch (error) {
+    return { available: true, valid: false, resultPath, summary: error.message };
+  }
+}
+
 function parseReviewOutput(taskId) {
+  const structured = parseAgentResult(taskId, "review");
+  if (structured.available) {
+    if (!structured.valid) return { available: true, passed: false, resultPath: structured.resultPath, summary: structured.summary };
+    if (structured.status !== "disabled" && structured.decision === "fail") return { available: true, passed: false, resultPath: structured.resultPath, summary: structured.summary || "structured review failed" };
+    if (structured.status !== "disabled" && structured.decision === "pass") return { available: true, passed: true, resultPath: structured.resultPath, summary: structured.summary || "structured review passed" };
+  }
   const resultPath = codexResultPath(taskId, "review");
   if (!fs.existsSync(resultPath)) return { available: false, passed: null, resultPath };
   const text = fs.readFileSync(resultPath, "utf8");
@@ -244,6 +272,16 @@ function parseReviewOutput(taskId) {
     resultPath,
     summary: text.slice(0, 500).replace(/\s+/g, " ").trim()
   };
+}
+
+function parseScoringOutput(taskId) {
+  const structured = parseAgentResult(taskId, "scoring");
+  if (!structured.available) return { available: false, passed: null, resultPath: structured.resultPath };
+  if (!structured.valid) return { available: true, passed: false, resultPath: structured.resultPath, summary: structured.summary };
+  if (structured.status === "disabled") return { available: true, passed: null, resultPath: structured.resultPath, summary: structured.summary };
+  if (structured.decision === "fail") return { available: true, passed: false, resultPath: structured.resultPath, summary: structured.summary || "structured scoring failed" };
+  if (["pass", "completed"].includes(structured.decision)) return { available: true, passed: true, resultPath: structured.resultPath, summary: structured.summary || "structured scoring passed" };
+  return { available: true, passed: null, resultPath: structured.resultPath, summary: structured.summary || "structured scoring undetermined" };
 }
 
 function developExample(taskId) {
@@ -310,6 +348,7 @@ function developExample(taskId) {
   run(process.execPath, ["scripts/state/record_action.mjs", taskId, "development", "write task artifact", file, "file written", "run auto gate then independent review"], systemRoot, true);
   markEvidence(taskId, `development wrote ${file}`);
   markEvidence(taskId, "development read skills/development-agent/SKILL.md and skills/loop-engineering/SKILL.md before writing");
+  run(process.execPath, ["scripts/state/record_artifact_hash.mjs", taskId, file, "development-output"], systemRoot, true);
 }
 
 function generatePrototype(taskId) {
@@ -455,6 +494,7 @@ function generatePrototype(taskId) {
   }
   markEvidence(taskId, `prototype generated ${html}`);
   markEvidence(taskId, `testcase generated ${testcase}`);
+  run(process.execPath, ["scripts/state/record_artifact_hash.mjs", taskId, path.join(dir, "prototype"), "prototype-output"], systemRoot, true);
 }
 
 function designGate(taskId) {
@@ -532,6 +572,7 @@ function testPrototype(taskId) {
   const write = spawnSync(process.execPath, ["scripts/mcp/mcp_tool.mjs", "tester", "filesystem", "write", report, reportText], { cwd: systemRoot, encoding: "utf8" });
   if (write.status !== 0) throw new Error(write.stderr || write.stdout);
   markEvidence(taskId, `prototype test report ${report} passed=${passed} failed=${failed}`);
+  run(process.execPath, ["scripts/state/record_artifact_hash.mjs", taskId, report, "test-report"], systemRoot, true);
   if (failed) {
     run(process.execPath, ["scripts/state/record_failure.mjs", taskId, "Prototype tests failed"]);
     return false;
@@ -556,7 +597,8 @@ function reviewExample(taskId) {
   }
   const file = taskType === "changelog" ? path.join(worktreePath(taskId), "CHANGELOG.md") : path.join(worktreePath(taskId), "example-task-output.md");
   if (!fs.existsSync(file)) {
-    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, "Review failed: expected output file missing"]);
+    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, "Review Agent blocked: expected output file missing"]);
+    setGate(taskId, "Review Gate", "failed");
     return false;
   }
   const read = spawnSync(process.execPath, ["scripts/mcp/mcp_tool.mjs", "review", "filesystem", "read", file], { cwd: systemRoot, encoding: "utf8" });
@@ -567,11 +609,13 @@ function reviewExample(taskId) {
     const required = ["7 个核心模块清单", "当前版本功能范围", "已知限制", "后续规划"];
     const missing = required.filter((item) => !text.includes(item));
     if (missing.length) {
-      run(process.execPath, ["scripts/state/record_failure.mjs", taskId, `Review failed: CHANGELOG missing ${missing.join(", ")}`]);
+      run(process.execPath, ["scripts/state/record_failure.mjs", taskId, `Review Agent blocked: CHANGELOG missing ${missing.join(", ")}`]);
+      setGate(taskId, "Review Gate", "failed");
       return false;
     }
   } else if (!text.includes("Agent Loop Example") || !text.includes(taskId)) {
-    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, "Review failed: output content incomplete"]);
+    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, "Review Agent blocked: output content incomplete"]);
+    setGate(taskId, "Review Gate", "failed");
     return false;
   }
   setGate(taskId, "Review Gate", "passed");
@@ -580,9 +624,23 @@ function reviewExample(taskId) {
 }
 
 function scoreExample(taskId) {
+  const scoringOutput = parseScoringOutput(taskId);
+  if (scoringOutput.available && scoringOutput.passed === false) {
+    run(process.execPath, ["scripts/state/record_failure.mjs", taskId, `Scoring Agent blocked: ${scoringOutput.summary}`]);
+    setGate(taskId, "Score Gate", "failed");
+    markEvidence(taskId, `scoring failed by structured output ${scoringOutput.resultPath}`);
+    return false;
+  }
+  if (scoringOutput.available && scoringOutput.passed === true) {
+    setGate(taskId, "Score Gate", "passed");
+    markEvidence(taskId, `scoring passed by structured output ${scoringOutput.resultPath}`);
+    logToolCall({ role: "scoring", tool: "state", operation: "score", target: taskId, result: "passed" });
+    return true;
+  }
   const score = taskType === "changelog" ? 96 : 100;
   if (score < 85) {
     run(process.execPath, ["scripts/state/record_failure.mjs", taskId, `Score failed: ${score}`]);
+    setGate(taskId, "Score Gate", "failed");
     return false;
   }
   setGate(taskId, "Score Gate", "passed");
@@ -681,14 +739,7 @@ try {
       if (!runWithRetry("prototype_testing", () => testPrototype(taskId))) {
         update(taskId, "prototyping", "prototype tests failed");
       } else {
-        let text = readState(taskId);
-        text = setField(text, "Current Stage", "pending_human");
-        text = setField(text, "Updated At", nowIso());
-        text = replaceGateStatus(text, "Human Gate", "pending");
-        text = appendSectionItem(text, "Evidence", `${nowIso()} HUMAN_CONFIRMATION_REQUIRED prototype_approval`);
-        text = replaceNextAction(text, "Run scripts/human/approve_task.sh or scripts/human/reject_task.sh.");
-        writeState(taskId, text);
-        syncBoard();
+        run(process.execPath, ["scripts/human/record_gate.mjs", taskId, "pending", "prototype_approval", "orchestrator", "prototype approval required before formal development"], systemRoot, true);
         console.log(`PENDING_HUMAN task=${taskId}`);
         process.exit(90);
       }
@@ -710,6 +761,7 @@ try {
       runAgent("review", taskId);
       if (!runWithRetry("review", () => reviewExample(taskId))) {
         update(taskId, "returned_to_development", "review failed");
+        maybeInterrupt("review");
       } else {
         maybeInterrupt("review");
         update(taskId, "scoring", "review passed");
@@ -718,6 +770,7 @@ try {
       runAgent("scoring", taskId);
       if (!runWithRetry("scoring", () => scoreExample(taskId))) {
         update(taskId, "returned_to_development", "score failed");
+        maybeInterrupt("scoring");
       } else {
         maybeInterrupt("scoring");
         update(taskId, "cleanup", "score passed");

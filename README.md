@@ -124,6 +124,7 @@ logs/orchestrator.log
 logs/state.log
 logs/gate.log
 logs/tool-calls.log
+logs/human-gate.log
 ```
 
 Resume a task from state:
@@ -170,6 +171,25 @@ Auto gate:
 node scripts/gate/run_gate.mjs TASK_ID .
 ```
 
+Worktree isolation matrix:
+
+```bash
+scripts/worktree/verify_worktree.sh
+scripts/worktree/monitor_residue.sh
+```
+
+Agent structured output:
+
+```bash
+scripts/agents/verify_agent_result_schema.sh
+```
+
+Human gate audit:
+
+```bash
+scripts/human/verify_human_gate_audit.sh
+```
+
 ## Worktree Scripts
 
 Create isolated worktree:
@@ -188,6 +208,18 @@ Assert current path is an isolated worktree before writes:
 
 ```bash
 scripts/worktree/assert_worktree.sh
+```
+
+Verify create/assert/write/clean behavior:
+
+```bash
+scripts/worktree/verify_worktree.sh
+```
+
+Check for task branch or worktree residue:
+
+```bash
+scripts/worktree/monitor_residue.sh
 ```
 
 ## Skills
@@ -357,6 +389,18 @@ Verify the connector without running a model:
 scripts/agents/verify_codex_connector.sh
 ```
 
+Each role writes a structured result record:
+
+```text
+logs/codex/<taskId>.<role>.result.json
+```
+
+Verify the schema:
+
+```bash
+scripts/agents/verify_agent_result_schema.sh
+```
+
 Start MCP services:
 
 ```bash
@@ -482,6 +526,18 @@ scripts/human/reject_task.sh TASK_ID "reason"
 ```
 
 Human gate decisions are recorded in state files and logs.
+
+Audit log:
+
+```text
+logs/human-gate.log
+```
+
+Verify audit behavior:
+
+```bash
+scripts/human/verify_human_gate_audit.sh
+```
 
 ## Prototype Tasks
 

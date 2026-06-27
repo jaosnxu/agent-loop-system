@@ -21,6 +21,39 @@ function isCritical(tool, operation) {
   return (permissionConfig.criticalOperationsRequireHumanGate || []).includes(`${tool}:${operation}`);
 }
 
+function taskIdFromTarget(target = "") {
+  const resolved = path.resolve(target || systemRoot);
+  if (resolved.startsWith(worktreesRoot)) {
+    const relative = path.relative(worktreesRoot, resolved);
+    return relative.split(path.sep)[0] || "unbound";
+  }
+  return "unbound";
+}
+
+function requestApproval({ role, tool, operation, target, command }) {
+  const approvalsPath = path.join(systemRoot, "queue/human-approvals.json");
+  ensureDir(path.dirname(approvalsPath));
+  const approvals = fs.existsSync(approvalsPath) ? JSON.parse(fs.readFileSync(approvalsPath, "utf8")) : { version: "0.1.0", requests: [] };
+  const approvalId = `approval-${Date.now()}`;
+  const taskId = taskIdFromTarget(target || command || "");
+  const request = {
+    approvalId,
+    taskId,
+    status: "pending",
+    role,
+    tool,
+    operation,
+    target: target || "",
+    command: command || "",
+    reason: "critical operation requires human gate",
+    requestedAt: new Date().toISOString()
+  };
+  approvals.requests.push(request);
+  fs.writeFileSync(approvalsPath, `${JSON.stringify(approvals, null, 2)}\n`);
+  appendLog("logs/human-gate.log", `approval_requested approval_id=${approvalId} task=${taskId} role=${role} operation=${tool}:${operation} target=${JSON.stringify(target || command || "")}`);
+  return request;
+}
+
 function assertReadonlyCommand(command) {
   const blocked = /(^|[;&|]\s*)(rm|mv|cp|touch|mkdir|rmdir|chmod|chown|git\s+(commit|push|merge|reset|checkout|branch\s+-D)|npm\s+install|pnpm\s+install|yarn\s+add|curl\s+.*\|\s*sh)\b/;
   if (blocked.test(command)) {
@@ -57,7 +90,8 @@ function log(role, tool, operation, target, result) {
 export async function callTool({ role, tool, operation, target, content, command }) {
   try {
     if (isCritical(tool, operation)) {
-      throw new Error(`HUMAN_GATE_REQUIRED tool=${tool} operation=${operation}`);
+      const approval = requestApproval({ role, tool, operation, target, command });
+      throw new Error(`HUMAN_GATE_REQUIRED approval_id=${approval.approvalId} tool=${tool} operation=${operation}`);
     }
     if (!allowed(role, tool, operation)) {
       throw new Error(`Permission denied role=${role} tool=${tool} operation=${operation}`);

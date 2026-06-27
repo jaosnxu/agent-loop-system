@@ -594,14 +594,7 @@ function scoreExample(taskId) {
 function mergeResult(taskId) {
   if (taskType !== "changelog") return;
   if (!approved) {
-    let text = readState(taskId);
-    text = setField(text, "Current Stage", "pending_human");
-    text = setField(text, "Updated At", nowIso());
-    text = replaceGateStatus(text, "Human Gate", "pending");
-    text = appendSectionItem(text, "Evidence", `${nowIso()} HUMAN_CONFIRMATION_REQUIRED merge_to_main`);
-    text = replaceNextAction(text, "Run scripts/human/approve_task.sh or scripts/human/reject_task.sh.");
-    writeState(taskId, text);
-    syncBoard();
+    run(process.execPath, ["scripts/human/record_gate.mjs", taskId, "pending", "merge_to_main", "orchestrator", "merge to main requires human confirmation"], systemRoot, true);
     appendLog("logs/orchestrator.log", `human_gate_pending task=${taskId} operation=merge_to_main`);
     console.log(`PENDING_HUMAN task=${taskId}`);
     process.exit(90);

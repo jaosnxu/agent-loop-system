@@ -36,6 +36,12 @@ function scanPendingStates() {
 try {
   const rules = readText(config.paths.heartbeatRules);
   appendLog(config.paths.logFile, `heartbeat_start rules_bytes=${rules.length}`);
+  const supervisor = runNode("scripts/heartbeat/supervisor_status.mjs", []);
+  appendLog(config.paths.logFile, `heartbeat_supervisor_run status=${supervisor.status}`);
+  if (supervisor.status !== 0) {
+    process.stderr.write(supervisor.stderr);
+    process.exit(1);
+  }
   const createdEvents = await pollGitHubEvents();
   appendLog(config.paths.logFile, `heartbeat_github_events created=${createdEvents.length}`);
   const tasks = scanPendingStates();

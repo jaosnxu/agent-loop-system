@@ -18,5 +18,8 @@ export default {
   },
   concurrency: {
     maxRunningTasks: 1
+  },
+  supervisor: {
+    staleRunningMinutes: 60
   }
 };

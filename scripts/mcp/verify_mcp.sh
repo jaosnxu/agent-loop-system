@@ -38,6 +38,9 @@ if node "$ROOT/scripts/mcp/mcp_tool.mjs" development filesystem delete "$VERIFY_
   echo "MCP_VERIFY critical_human_gate_failed"
   exit 1
 fi
+grep -q "HUMAN_GATE_REQUIRED approval_id=" /tmp/mcp-human-gate.out
+test -f "$ROOT/queue/human-approvals.json"
+grep -q "\"taskId\": \"$TASK_ID\"" "$ROOT/queue/human-approvals.json"
 mkdir -p "$(dirname "$VERIFY_HTML")"
 cat > "$VERIFY_HTML" <<'HTML'
 <!doctype html>
@@ -103,4 +106,15 @@ else
   echo "MCP_VERIFY github query=no_token_public_rate_limit_only"
 fi
 echo "MCP_VERIFY github repo_read=$GITHUB_REPO_STATUS pulls_read=$GITHUB_PRS_STATUS commits_read=$GITHUB_COMMITS_STATUS actions_runs_read=$GITHUB_CI_STATUS"
+AGENT_LOOP_ROOT="$ROOT" AGENT_LOOP_TASK_ID="$TASK_ID" node --input-type=module <<'NODE'
+import fs from "node:fs";
+import path from "node:path";
+const file = path.join(process.env.AGENT_LOOP_ROOT, "queue/human-approvals.json");
+if (fs.existsSync(file)) {
+  const data = JSON.parse(fs.readFileSync(file, "utf8"));
+  data.requests = (data.requests || []).filter((request) => request.taskId !== process.env.AGENT_LOOP_TASK_ID);
+  if (data.requests.length) fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`);
+  else fs.rmSync(file);
+}
+NODE
 echo "MCP_VERIFY_PASSED"

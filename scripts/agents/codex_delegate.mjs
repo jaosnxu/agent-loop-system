@@ -82,12 +82,39 @@ function runProvider({ config, providerName, provider, taskId, role, prompt, res
   throw new Error(`Unsupported provider type: ${provider.type}`);
 }
 
-function recordCodexResult(taskId, role, resultOut) {
+function inferDecision(role, resultText) {
+  if (/gate_result:\s*FAIL\b/i.test(resultText) || /next_stage:\s*returned_to_development\b/i.test(resultText)) return "fail";
+  if (/gate_result:\s*PASS\b/i.test(resultText) || /next_stage:\s*scoring\b/i.test(resultText)) return "pass";
+  if (role === "review" || role === "scoring") return "undetermined";
+  return "completed";
+}
+
+function writeStructuredResult({ taskId, role, providerName, promptOut, resultOut, status, statusCode, summary }) {
+  const structuredOut = path.join(path.dirname(resultOut), `${taskId}.${role}.result.json`);
+  const body = {
+    schemaVersion: "agent-result/v1",
+    taskId,
+    role,
+    provider: providerName,
+    status,
+    statusCode,
+    decision: inferDecision(role, summary || ""),
+    promptPath: promptOut,
+    rawResultPath: resultOut,
+    summary: summary || "",
+    createdAt: nowIso()
+  };
+  fs.writeFileSync(structuredOut, `${JSON.stringify(body, null, 2)}\n`);
+  return structuredOut;
+}
+
+function recordCodexResult(taskId, role, providerName, promptOut, resultOut, status = "completed", statusCode = 0) {
   let text = readState(taskId);
   const resultText = fs.existsSync(resultOut) ? fs.readFileSync(resultOut, "utf8").slice(0, 600).replace(/\s+/g, " ").trim() : "";
+  const structuredOut = writeStructuredResult({ taskId, role, providerName, promptOut, resultOut, status, statusCode, summary: resultText });
   text = setField(text, "Updated At", nowIso());
-  text = appendSectionItem(text, "Action Journal", `${nowIso()} actor=codex-${role} action="execute delegated Codex subtask" target=${JSON.stringify(resultOut)} result=${JSON.stringify(resultText)} next_check="orchestrator must parse role result and route next stage"`);
-  text = appendSectionItem(text, "Evidence", `${nowIso()} codex role=${role} result=${resultOut} summary=${JSON.stringify(resultText)}`);
+  text = appendSectionItem(text, "Action Journal", `${nowIso()} actor=codex-${role} action="execute delegated model subtask" target=${JSON.stringify(structuredOut)} result=${JSON.stringify(resultText)} next_check="orchestrator must parse structured role result and route next stage"`);
+  text = appendSectionItem(text, "Evidence", `${nowIso()} agent_result role=${role} provider=${providerName} status=${status} structured=${structuredOut} raw=${resultOut} summary=${JSON.stringify(resultText)}`);
   writeState(taskId, text);
   syncBoard();
   spawnSync(process.execPath, ["scripts/memory/sync_task_memory.mjs", taskId], { cwd: systemRoot, encoding: "utf8" });
@@ -108,21 +135,23 @@ try {
   const promptOut = path.join(outDir, `${taskId}.${role}.prompt.md`);
   const resultOut = path.join(outDir, `${taskId}.${role}.result.md`);
   fs.writeFileSync(promptOut, prompt);
+  const { name: providerName, provider } = activeProvider(config);
 
   if (!codexEnabled(config)) {
     appendLog("logs/orchestrator.log", `codex_delegate_disabled role=${role} task=${taskId} prompt=${promptOut}`);
+    fs.writeFileSync(resultOut, "CODEX_DELEGATE_DISABLED\n");
+    recordCodexResult(taskId, role, providerName, promptOut, resultOut, "disabled", 0);
     console.log(`CODEX_DELEGATE_DISABLED role=${role} task=${taskId} prompt=${promptOut}`);
     process.exit(0);
   }
 
-  const { name: providerName, provider } = activeProvider(config);
   const result = runProvider({ config, providerName, provider, taskId, role, prompt, resultOut });
   appendLog("logs/orchestrator.log", `codex_delegate role=${role} task=${taskId} provider=${providerName} status=${result.status} cwd=${executionCwd(taskId)}`);
   if (result.stdout.trim()) appendLog("logs/orchestrator.log", `codex_stdout ${JSON.stringify(result.stdout.slice(0, 800))}`);
   if (result.stderr.trim()) appendLog("logs/orchestrator.log", `codex_stderr ${JSON.stringify(result.stderr.slice(0, 800))}`);
   if (result.status !== 0) throw new Error(`Codex delegate failed role=${role} status=${result.status}: ${result.stderr || result.stdout}`);
 
-  recordCodexResult(taskId, role, resultOut);
+  recordCodexResult(taskId, role, providerName, promptOut, resultOut, "completed", result.status);
   console.log(`CODEX_DELEGATE_OK role=${role} task=${taskId} result=${resultOut}`);
 } catch (error) {
   appendLog("logs/error.log", `codex_delegate_failed role=${role || "unset"} task=${taskId || "unset"} error=${JSON.stringify(error.message)}`);

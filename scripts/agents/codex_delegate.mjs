@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { appendLog, appendSectionItem, ensureDir, nowIso, readState, setField, systemRoot, validateTaskId, writeState } from "../lib/common.mjs";
 import { syncBoard } from "../state/sync_board_lib.mjs";
 import { recordStructuredEvidence } from "../state/structured_evidence_lib.mjs";
+import { estimateTokensFromText, recordBudgetUsage } from "../state/budget_lib.mjs";
 
 const [role, taskId, promptFileArg = ""] = process.argv.slice(2);
 
@@ -128,6 +129,22 @@ function recordCodexResult(taskId, role, providerName, promptOut, resultOut, sta
   writeState(taskId, text);
   syncBoard();
   spawnSync(process.execPath, ["scripts/memory/sync_task_memory.mjs", taskId], { cwd: systemRoot, encoding: "utf8" });
+  if (status === "completed") {
+    const promptText = fs.existsSync(promptOut) ? fs.readFileSync(promptOut, "utf8") : "";
+    const rawText = fs.existsSync(resultOut) ? fs.readFileSync(resultOut, "utf8") : "";
+    recordBudgetUsage({
+      taskId,
+      source: "codex_delegate",
+      actor: `codex-${role}`,
+      tool: "model",
+      operation: "delegate",
+      target: resultOut,
+      result: status,
+      tokenEstimate: estimateTokensFromText(promptText) + estimateTokensFromText(rawText),
+      toolCalls: 1,
+      details: { role, provider: providerName, statusCode, promptPath: promptOut, rawResultPath: resultOut }
+    });
+  }
 }
 
 try {

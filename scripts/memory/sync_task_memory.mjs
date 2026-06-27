@@ -20,6 +20,13 @@ function evidenceJsonl(taskId) {
   return lines.slice(-20).join("\n") || "- None";
 }
 
+function budgetJsonl(taskId) {
+  const file = path.join(systemRoot, "memory/budget", `${taskId}.jsonl`);
+  if (!fs.existsSync(file)) return "- None";
+  const lines = fs.readFileSync(file, "utf8").trim().split("\n").filter(Boolean);
+  return lines.slice(-20).join("\n") || "- None";
+}
+
 try {
   validateTaskId(taskId);
   const state = readState(taskId);
@@ -75,6 +82,10 @@ try {
     "## Structured Evidence JSONL",
     "",
     evidenceJsonl(taskId),
+    "",
+    "## Budget Usage JSONL",
+    "",
+    budgetJsonl(taskId),
     "",
     "## Next Action",
     "",

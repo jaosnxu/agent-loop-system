@@ -130,6 +130,14 @@ memory/evidence/TASK_ID.jsonl
 
 Each structured evidence row uses `schemaVersion=structured-evidence/v1` and records `taskId`, `type`, `actor`, `action`, `target`, `result`, `nextCheck`, `details`, and `createdAt`. The latest evidence ids are also mirrored into the task state under `## Structured Evidence`, then synced into `memory/tasks/TASK_ID.md`.
 
+Budget usage ledger:
+
+```text
+memory/budget/TASK_ID.jsonl
+```
+
+MCP calls and enabled model delegate calls update `Tool Call Count` and `Token Budget Used` in state, write `budget-usage/v1` rows, and sync the latest budget rows into `memory/tasks/TASK_ID.md`.
+
 Global board:
 
 ```text
@@ -227,6 +235,12 @@ Structured evidence spine:
 
 ```bash
 scripts/state/verify_structured_evidence.sh
+```
+
+Budget usage and safety brake:
+
+```bash
+scripts/state/verify_budget_usage.sh
 ```
 
 Cleanup matrix:
@@ -950,6 +964,7 @@ scripts/agents/verify_skill_drift.sh
 scripts/orchestrator/verify_structured_decisions.sh
 scripts/state/verify_artifact_hash.sh
 scripts/state/verify_structured_evidence.sh
+scripts/state/verify_budget_usage.sh
 scripts/github/verify_pr_ci_gate.sh
 scripts/github/verify_merge_readiness.sh
 scripts/github/verify_pr_continuation.sh

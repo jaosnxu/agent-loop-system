@@ -33,7 +33,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 | Skill | A- | Uses standard `skills/*/SKILL.md`, role read logs, sha256 evidence, checksum verifier, and Skill drift fixture | Needs richer checksum drift reports across long-running tasks |
 | Sub-agents | B | Has role prompts, stage names, provider-aware delegate runner, Codex default provider slot, structured result JSON, and review/scoring decision parsing | Needs explicit model-delegation enablement, provider-specific smoke tests beyond Codex, and stricter context minimization |
 | MCP connector | A- | Has MCP wrapper, permissions, logs, filesystem/shell/GitHub/browser basics, required-Playwright mode, install/start/verify scripts, GitHub PR/CI read, write-intent human gate, merge readiness gate, and PR create/review/merge dry-run/live continuation framework | Needs live write verification in a safe staging repository |
-| State / Memory spine | A- | Has queue, state, board, logs, resume, counters, requirement/acceptance propagation, action journal, artifact hashes, no-progress accounting, structured evidence JSONL, and state/memory evidence mirrors | Needs token budget tied to real provider usage and broader structured coverage for future direct state writers |
+| State / Memory spine | A- | Has queue, state, board, logs, resume, counters, requirement/acceptance propagation, action journal, artifact hashes, no-progress accounting, structured evidence JSONL, state/memory evidence mirrors, MCP budget usage ledger, and model-delegate budget hooks | Needs official provider token metrics when available and broader structured coverage for future direct state writers |
 | Human gate | A- | Has approve/reject scripts, pending_human, merge/prototype pause, durable approval queue, request-level approve/reject, report command, local approval UI, viewer/approver/admin RBAC, audit ledger, actor/reason/operation/gate id evidence, PR continuation, filesystem delete continuation, and notification continuation | Needs production identity provider integration and broader operation-specific execution continuations |
 
 ## 2. Heartbeat Audit
@@ -308,10 +308,14 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - State files mirror evidence ids in `## Structured Evidence`, and `memory/tasks/TASK_ID.md` syncs both the state mirror and JSONL evidence tail.
 - Create, stage transition, action, failure, diagnostic, artifact hash, role read, and delegated agent result paths now write structured evidence.
 - `scripts/state/verify_structured_evidence.sh` verifies state, memory, JSONL schema, required evidence types, artifact hash details, and diagnostic root cause details.
+- `scripts/state/budget_lib.mjs` writes `budget-usage/v1` rows under `memory/budget/TASK_ID.jsonl`.
+- MCP tool calls update `Tool Call Count`, estimated `Token Budget Used`, structured evidence, and task memory budget tails when the call is tied to a task state.
+- Enabled model delegate calls update budget counters from prompt/result size estimates; disabled delegates do not fake provider usage.
+- `scripts/state/verify_budget_usage.sh` verifies MCP-driven budget updates and proves the safety brake blocks at the configured tool-call limit.
 
 ### What Is Missing
 
-- Token budget is recorded but not connected to actual model/provider usage.
+- Budget accounting uses deterministic token estimates from real prompt/result/tool payload bytes; it does not yet ingest official provider token metrics.
 - Old bad state files may remain and confuse board.
 - Some future direct state writers may still need structured evidence calls as new operations are added.
 
@@ -320,7 +324,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 | Priority | Fix |
 |---|---|
 | P1 | Keep expanding structured evidence coverage for new direct state writers |
-| P1 | Connect token/tool budget to real provider/tool usage |
+| P1 | Replace deterministic token estimates with official provider token metrics when the local provider exposes them |
 
 ### Acceptance
 
@@ -329,6 +333,7 @@ But it is not yet a complete production LOOP system. The biggest gaps are:
 - Queue, state, and board agree.
 - Repeated no-progress terminates.
 - `scripts/state/verify_structured_evidence.sh` passes and proves new tasks write machine-readable evidence to state, memory, and JSONL.
+- `scripts/state/verify_budget_usage.sh` passes and proves real MCP calls update budget counters and safety brake enforcement.
 
 ## 8. Human Gate Audit
 
@@ -396,7 +401,7 @@ The smallest useful repair batch is:
 1. Provider-specific smoke tests for non-Codex providers once those CLIs are installed and their argument contracts are verified.
 2. Safe staging-repo live verification for PR create/update, PR review, and merge.
 3. Operation-specific execution continuation fixtures for any new critical operation.
-4. Token/tool budget accounting from real provider/tool usage.
+4. Official provider token metrics ingestion when available from local model runtimes.
 5. Product-specific heartbeat connector deployment configs and operational dashboard/alerts.
 
 After the current batch, the system is a stronger local LOOP runtime with real isolation, state, gate, and approval evidence. It still should not be called a complete production autonomous software factory until model-backed sub-agent execution and real external integrations are proven end to end.

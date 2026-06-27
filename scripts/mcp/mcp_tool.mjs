@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { systemRoot, appendLog, ensureDir } from "../lib/common.mjs";
 import { logError } from "../lib/error_logger.mjs";
 import { githubRepoConfig, githubToken } from "../lib/github_config.mjs";
+import { estimateTokensFromText, recordBudgetUsage } from "../state/budget_lib.mjs";
 
 const mainRepoRoot = path.resolve(systemRoot, "..");
 const worktreesRoot = path.resolve(systemRoot, "..", "worktrees");
@@ -92,6 +93,34 @@ function log(role, tool, operation, target, result) {
   appendLog("logs/tool-calls.log", `role=${role} tool=${tool} operation=${operation} target=${JSON.stringify(target)} result=${result}`);
 }
 
+function taskIdForUsage(target, command) {
+  let taskId = taskIdFromTarget(command || "");
+  if (taskId === "unbound") taskId = taskIdFromTarget(target || "");
+  return taskId;
+}
+
+function recordUsage({ role, tool, operation, target, content, command, result, resultPayload }) {
+  const taskId = taskIdForUsage(target, command);
+  const tokenEstimate = estimateTokensFromText({ target, content, command, resultPayload });
+  return recordBudgetUsage({
+    taskId,
+    source: "mcp_tool",
+    actor: role,
+    tool,
+    operation,
+    target: target || command || "",
+    result,
+    tokenEstimate,
+    toolCalls: 1,
+    details: { contentBytes: String(content || "").length, commandBytes: String(command || "").length }
+  });
+}
+
+function completeTool({ role, tool, operation, target, content, command, result, resultPayload }) {
+  log(role, tool, operation, target || command, result);
+  recordUsage({ role, tool, operation, target, content, command, result, resultPayload });
+}
+
 export async function callTool({ role, tool, operation, target, content, command }) {
   try {
     if (isCritical(tool, operation)) {
@@ -105,26 +134,26 @@ export async function callTool({ role, tool, operation, target, content, command
       if (!inAllowedPath(target)) throw new Error(`Path denied: ${target}`);
       if (operation === "read") {
         const text = fs.readFileSync(target, "utf8");
-        log(role, tool, operation, target, "passed");
+        completeTool({ role, tool, operation, target, content, command, result: "passed", resultPayload: text });
         return { ok: true, text };
       }
       if (operation === "write") {
         assertWorktreeWrite(target);
         ensureDir(path.dirname(target));
         fs.writeFileSync(target, content || "");
-        log(role, tool, operation, target, "passed");
+        completeTool({ role, tool, operation, target, content, command, result: "passed", resultPayload: { bytes: String(content || "").length } });
         return { ok: true };
       }
     }
     if (tool === "shell" && operation === "execute") {
       const out = spawnSync("/bin/zsh", ["-lc", command], { cwd: target || systemRoot, encoding: "utf8" });
-      log(role, tool, operation, command, out.status === 0 ? "passed" : "failed");
+      completeTool({ role, tool, operation, target, content, command, result: out.status === 0 ? "passed" : "failed", resultPayload: { stdout: out.stdout, stderr: out.stderr, status: out.status } });
       return { ok: out.status === 0, status: out.status, stdout: out.stdout, stderr: out.stderr };
     }
     if (tool === "shell" && operation === "execute_readonly") {
       assertReadonlyCommand(command || target);
       const out = spawnSync("/bin/zsh", ["-lc", command || target], { cwd: target && command ? target : systemRoot, encoding: "utf8" });
-      log(role, tool, operation, command || target, out.status === 0 ? "passed" : "failed");
+      completeTool({ role, tool, operation, target, content, command: command || target, result: out.status === 0 ? "passed" : "failed", resultPayload: { stdout: out.stdout, stderr: out.stderr, status: out.status } });
       return { ok: out.status === 0, status: out.status, stdout: out.stdout, stderr: out.stderr };
     }
     if (tool === "browser" && operation === "test") {
@@ -137,7 +166,7 @@ export async function callTool({ role, tool, operation, target, content, command
       }
       const args = ["scripts/mcp/browser_test.mjs", target, reportPath, ...(requirePlaywright ? ["--require-playwright"] : [])];
       const out = spawnSync(process.execPath, args, { cwd: systemRoot, encoding: "utf8" });
-      log(role, tool, operation, target, out.status === 0 ? "passed" : "failed");
+      completeTool({ role, tool, operation, target, content, command, result: out.status === 0 ? "passed" : "failed", resultPayload: { stdout: out.stdout, stderr: out.stderr, status: out.status } });
       return { ok: out.status === 0, status: out.status, stdout: out.stdout, stderr: out.stderr };
     }
     if (tool === "github" && operation.endsWith(":read")) {
@@ -154,12 +183,12 @@ export async function callTool({ role, tool, operation, target, content, command
         req.end();
       });
       const ok = data.status >= 200 && data.status < 400;
-      log(role, tool, operation, url, ok ? "passed" : `failed_http_${data.status}`);
+      completeTool({ role, tool, operation, target: url, content, command, result: ok ? "passed" : `failed_http_${data.status}`, resultPayload: data.bodyText || data.body });
       return { ok, data };
     }
     throw new Error(`Unsupported tool operation ${tool}:${operation}`);
   } catch (error) {
-    log(role, tool, operation, target || command, "blocked");
+    completeTool({ role, tool, operation, target, content, command, result: "blocked", resultPayload: error.message });
     logError("ERROR", "mcp_tool", error, { role, tool, operation, target, command });
     return { ok: false, error: error.message };
   }

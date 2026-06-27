@@ -28,6 +28,7 @@
     "verify:memory": "scripts/memory/verify_memory_spine.sh",
     "verify:action-journal": "scripts/memory/verify_action_journal.sh",
     "verify:structured-evidence": "scripts/state/verify_structured_evidence.sh",
+    "verify:budget": "scripts/state/verify_budget_usage.sh",
     "verify:skills": "scripts/agents/verify_skills_standard.sh",
     "verify:skill-checksums": "scripts/agents/verify_skill_checksums.sh",
     "verify:skill-drift": "scripts/agents/verify_skill_drift.sh",

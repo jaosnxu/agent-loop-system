@@ -527,6 +527,30 @@ Verify readiness blocking behavior:
 scripts/github/verify_merge_readiness.sh
 ```
 
+Run post-approval PR continuation in dry-run mode:
+
+```bash
+node scripts/github/continue_pr_operation.mjs APPROVAL_ID create --mode=dry-run
+node scripts/github/continue_pr_operation.mjs APPROVAL_ID review --mode=dry-run
+node scripts/github/continue_pr_operation.mjs APPROVAL_ID merge --mode=dry-run
+```
+
+Live mode never runs from the first approval alone. First it creates a second pending human approval:
+
+```bash
+node scripts/github/continue_pr_operation.mjs APPROVAL_ID create --mode=live
+scripts/human/approve_approval.sh LIVE_APPROVAL_ID "approve live PR creation"
+node scripts/github/continue_pr_operation.mjs APPROVAL_ID create --mode=live --live-approval-id=LIVE_APPROVAL_ID --confirm-live
+```
+
+Supported live actions are PR create, PR review, and PR merge. Merge still requires readiness evidence before execution.
+
+Verify continuation dry-run and second-gate behavior:
+
+```bash
+scripts/github/verify_pr_continuation.sh
+```
+
 ## Queue Operations
 
 Add task:
@@ -807,5 +831,6 @@ scripts/orchestrator/verify_structured_decisions.sh
 scripts/state/verify_artifact_hash.sh
 scripts/github/verify_pr_ci_gate.sh
 scripts/github/verify_merge_readiness.sh
+scripts/github/verify_pr_continuation.sh
 scripts/worktree/verify_cleanup_matrix.sh
 ```

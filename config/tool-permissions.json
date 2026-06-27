@@ -10,7 +10,7 @@
     "development": {
       "filesystem": ["read", "write"],
       "shell": ["execute"],
-      "github": ["contents:write", "pull_requests:write"]
+      "github": ["contents:write", "pull_requests:write", "pull_requests:review", "pull_requests:merge"]
     },
     "prototyper": {
       "filesystem": ["read", "write"],
@@ -36,6 +36,7 @@
   },
   "criticalOperationsRequireHumanGate": [
     "github:pull_requests:write",
+    "github:pull_requests:review",
     "github:pull_requests:merge",
     "filesystem:delete",
     "shell:destructive",
